@@ -97,8 +97,12 @@ test("panel uses visible stepper controls for numeric visual controls", () => {
   assert.match(source, /addStepperEdit\(lineColumn, "Point size"/);
   assert.match(source, /addStepperEdit\(lineColumn, "Stroke width"/);
   assert.match(source, /addStepperEdit\(textColumn, "Text size"/);
+  // Range numeric fields share the same spinner (consistency)
+  assert.match(source, /addStepperEdit\(rangeGroup, "Divisions"/);
+  assert.match(source, /var visibleStartInput = addSpinner\(pointsRow,/);
+  assert.match(source, /var startFrameInput = addSpinner\(framesRow,/);
   // up/down arrow spinner stacked on the right, plus arrow-key support
-  assert.match(source, /var spinner = row\.add\("group"\)/);
+  assert.match(source, /var spinner = parent\.add\("group"\)/);
   assert.match(source, /spinner\.orientation = "column"/);
   assert.match(source, /upButton\.onClick/);
   assert.match(source, /downButton\.onClick/);
@@ -200,8 +204,8 @@ test("panel offers fit-to-comp and an explicit start/end frame range", () => {
   // UI: a fit-to-comp checkbox plus start/end frame fields
   assert.match(source, /Fit animation to composition/);
   assert.match(source, /makeRow\(rangeGroup, "Frame range"\)/);
-  assert.match(source, /var startFrameInput = framesRow\.add\("edittext"/);
-  assert.match(source, /var endFrameInput = framesRow\.add\("edittext"/);
+  assert.match(source, /var startFrameInput = addSpinner\(framesRow,/);
+  assert.match(source, /var endFrameInput = addSpinner\(framesRow,/);
   assert.match(source, /function syncFramesEnabled\(\)/);
 
   // controller carries the timing as Fit To Comp / Start Frame / End Frame

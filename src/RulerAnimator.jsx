@@ -49,19 +49,17 @@
     var title = panel.add("statictext", undefined, "Ruler Animator");
     title.graphics.font = ScriptUI.newFont(title.graphics.font.name, "BOLD", 16);
 
-    var subtitle = panel.add("statictext", undefined, "Start line, labeled points, repeatable ruler animation  ·  build 12");
+    var subtitle = panel.add("statictext", undefined, "Start line, labeled points, repeatable ruler animation  ·  build 13");
     subtitle.enabled = false;
 
     var rangeGroup = addSection(panel, "Range");
 
-    var divisionsInput = addLabeledEdit(rangeGroup, "Divisions", "6", 50);
+    var divisionsInput = addStepperEdit(rangeGroup, "Divisions", "6", 1, 99, 1);
 
     var pointsRow = makeRow(rangeGroup, "Label points");
-    var visibleStartInput = pointsRow.add("edittext", undefined, "4");
-    visibleStartInput.preferredSize.width = 50;
+    var visibleStartInput = addSpinner(pointsRow, "4", 0, 99, 1, 44);
     pointsRow.add("statictext", undefined, "to");
-    var visibleEndInput = pointsRow.add("edittext", undefined, "6");
-    visibleEndInput.preferredSize.width = 50;
+    var visibleEndInput = addSpinner(pointsRow, "6", 0, 99, 1, 44);
     var pointsHelp = pointsRow.add("statictext", undefined, "(point 0 = start, always shown)");
     pointsHelp.enabled = false;
 
@@ -73,18 +71,15 @@
     fitToCompInput.value = true;
 
     var framesRow = makeRow(rangeGroup, "Frame range");
-    var startFrameInput = framesRow.add("edittext", undefined, "0");
-    startFrameInput.preferredSize.width = 50;
+    var startFrameInput = addSpinner(framesRow, "0", 0, 100000, 1, 44);
     framesRow.add("statictext", undefined, "to");
-    var endFrameInput = framesRow.add("edittext", undefined, "60");
-    endFrameInput.preferredSize.width = 50;
+    var endFrameInput = addSpinner(framesRow, "60", 0, 100000, 1, 44);
     var framesHelp = framesRow.add("statictext", undefined, "(start / end frame; used when not fitting)");
     framesHelp.enabled = false;
 
+    // Grey out the whole frame-range row (fields + spinners) when fitting.
     function syncFramesEnabled() {
-      var manual = !fitToCompInput.value;
-      startFrameInput.enabled = manual;
-      endFrameInput.enabled = manual;
+      framesRow.enabled = !fitToCompInput.value;
     }
     fitToCompInput.onClick = syncFramesEnabled;
     syncFramesEnabled();
@@ -380,15 +375,13 @@
     return input;
   }
 
-  function addStepperEdit(parent, label, value, minValue, maxValue, step) {
-    var row = makeRow(parent, label);
+  // Edit field + stacked ▲▼ spinner (and arrow-key support). Label-less
+  // building block shared by addStepperEdit and the two-field Range rows.
+  function addSpinner(parent, value, minValue, maxValue, step, width) {
+    var input = parent.add("edittext", undefined, value);
+    input.preferredSize.width = width || 56;
 
-    var input = row.add("edittext", undefined, value);
-    input.preferredSize.width = 56;
-
-    // Up/down arrows stacked on the right, like a normal numeric spinner,
-    // instead of separate "-" and "+" buttons.
-    var spinner = row.add("group");
+    var spinner = parent.add("group");
     spinner.orientation = "column";
     spinner.spacing = 1;
     spinner.margins = 0;
@@ -428,6 +421,11 @@
     } catch (ignored) {}
 
     return input;
+  }
+
+  function addStepperEdit(parent, label, value, minValue, maxValue, step) {
+    var row = makeRow(parent, label);
+    return addSpinner(row, value, minValue, maxValue, step);
   }
 
   function addFontControl(parent, label) {
