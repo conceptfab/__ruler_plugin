@@ -22,41 +22,55 @@ test("panel uses readable production-oriented section labels", () => {
   assert.match(source, /Range/);
   assert.match(source, /Motion/);
   assert.match(source, /Appearance/);
-  assert.match(source, /First label point/);
-  assert.match(source, /Last label point/);
+  assert.match(source, /Label points/);
+  assert.match(source, /"Line & point"/);
+  assert.match(source, /"Text"/);
   assert.match(source, /Values/);
   assert.match(source, /Setup guide line/);
 });
 
-test("panel uses color picker buttons instead of hex-only color entry", () => {
+test("panel offers color picking on every color row", () => {
   const source = readPanel();
 
   assert.match(source, /\$\.colorPicker\(\)/);
-  assert.match(source, /addColorControl\(appearanceLeft, "Line color"/);
-  assert.match(source, /addColorControl\(appearanceLeft, "Point fill"/);
-  assert.match(source, /addColorControl\(appearanceRight, "Point stroke"/);
-  assert.match(source, /addColorControl\(appearanceRight, "Text color"/);
-  assert.match(source, /"Pick"/);
+  assert.match(source, /addColorControl\(lineGroup, "Line color"/);
+  assert.match(source, /addColorControl\(lineGroup, "Point fill"/);
+  assert.match(source, /addColorControl\(lineGroup, "Point stroke"/);
+  assert.match(source, /addColorControl\(textGroup, "Text color"/);
+});
+
+test("panel shows a color swatch next to each color field", () => {
+  const source = readPanel();
+
+  assert.match(source, /var swatch = row\.add\("panel"\)/);
+  assert.match(source, /function paintSwatch\(\)/);
+  assert.match(source, /core\.parseHexColor\(input\.text\)/);
+  // the swatch itself opens the picker on click
+  assert.match(source, /swatch\.addEventListener\("mousedown", pickColor\)/);
 });
 
 test("panel uses visible stepper controls for numeric visual controls", () => {
   const source = readPanel();
 
-  assert.match(source, /addStepperEdit\(appearanceLeft, "Line width"/);
-  assert.match(source, /addStepperEdit\(appearanceLeft, "Point size"/);
-  assert.match(source, /addStepperEdit\(appearanceRight, "Stroke width"/);
-  assert.match(source, /addStepperEdit\(appearanceRight, "Text size"/);
-  assert.match(source, /addStepperEdit\(rangeRight, "Duration"/);
-  assert.match(source, /decrementButton = row\.add\("button", undefined, "-"\)/);
-  assert.match(source, /incrementButton = row\.add\("button", undefined, "\+"\)/);
+  assert.match(source, /addStepperEdit\(lineGroup, "Line width"/);
+  assert.match(source, /addStepperEdit\(lineGroup, "Point size"/);
+  assert.match(source, /addStepperEdit\(lineGroup, "Stroke width"/);
+  assert.match(source, /addStepperEdit\(textGroup, "Text size"/);
+  assert.match(source, /addStepperEdit\(rangeGroup, "Duration \(s\)"/);
+  // up/down arrow spinner stacked on the right, plus arrow-key support
+  assert.match(source, /var spinner = row\.add\("group"\)/);
+  assert.match(source, /spinner\.orientation = "column"/);
+  assert.match(source, /upButton\.onClick/);
+  assert.match(source, /downButton\.onClick/);
+  assert.match(source, /addEventListener\("keydown"/);
 });
 
 test("panel exposes human text controls for font and alignment", () => {
   const source = readPanel();
 
-  assert.match(source, /addFontControl\(appearanceRight, "Font"/);
-  assert.match(source, /addAlignmentControl\(appearanceRight, "Text align"/);
-  assert.match(source, /addTextOrientationControl\(appearanceRight, "Text direction"/);
+  assert.match(source, /addFontControl\(textGroup, "Font"/);
+  assert.match(source, /addAlignmentControl\(textGroup, "Text align"/);
+  assert.match(source, /addTextOrientationControl\(textGroup, "Text direction"/);
   assert.match(source, /app\.fonts\.allFonts/);
   assert.match(source, /"Left"/);
   assert.match(source, /"Center"/);
@@ -77,11 +91,12 @@ test("panel reads selected font, text alignment, and direction into settings", (
   assert.match(source, /ParagraphJustification\.RIGHT_JUSTIFY/);
 });
 
-test("panel constrains color rows so Pick buttons remain visible", () => {
+test("panel color rows use a clickable swatch and hex field, no extra button", () => {
   const source = readPanel();
 
-  assert.match(source, /input\.preferredSize\.width = 82;/);
-  assert.match(source, /button\.preferredSize\.width = 54;/);
+  assert.match(source, /swatch\.preferredSize = \[32, 20\]/);
+  assert.match(source, /swatch\.helpTip = "Click to pick a color"/);
+  assert.doesNotMatch(source, /undefined, "Pick"/);
 });
 
 test("panel loads the core file relative to the panel file at runtime", () => {

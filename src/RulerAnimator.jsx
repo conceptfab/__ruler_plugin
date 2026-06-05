@@ -53,30 +53,29 @@
     subtitle.enabled = false;
 
     var rangeGroup = addSection(panel, "Range");
-    var rangeGrid = rangeGroup.add("group");
-    rangeGrid.orientation = "row";
-    rangeGrid.alignChildren = ["fill", "top"];
-    rangeGrid.spacing = 10;
 
-    var rangeLeft = rangeGrid.add("group");
-    rangeLeft.orientation = "column";
-    rangeLeft.alignChildren = ["fill", "top"];
-    var rangeRight = rangeGrid.add("group");
-    rangeRight.orientation = "column";
-    rangeRight.alignChildren = ["fill", "top"];
+    var divisionsInput = addLabeledEdit(rangeGroup, "Divisions", "6", 50);
 
-    var divisionsInput = addLabeledEdit(rangeLeft, "Divisions", "6", 7);
-    var visibleStartInput = addLabeledEdit(rangeLeft, "First label point", "4", 7);
-    var visibleEndInput = addLabeledEdit(rangeRight, "Last label point", "6", 7);
-    var durationInput = addStepperEdit(rangeRight, "Duration", "1.2", 0.1, 5, 0.1, 7);
-    var labelsInput = addLabeledEdit(rangeGroup, "Values", "80 cm, 100 cm, 120 cm", 28);
+    var pointsRow = makeRow(rangeGroup, "Label points");
+    var visibleStartInput = pointsRow.add("edittext", undefined, "4");
+    visibleStartInput.preferredSize.width = 50;
+    pointsRow.add("statictext", undefined, "to");
+    var visibleEndInput = pointsRow.add("edittext", undefined, "6");
+    visibleEndInput.preferredSize.width = 50;
+    var pointsHelp = pointsRow.add("statictext", undefined, "(point 0 = start, always shown)");
+    pointsHelp.enabled = false;
+
+    var durationInput = addStepperEdit(rangeGroup, "Duration (s)", "1.2", 0.1, 5, 0.1);
+
+    var labelsInput = addLabeledEdit(rangeGroup, "Values", "80 cm, 100 cm, 120 cm", 240);
 
     var guideRow = rangeGroup.add("group");
     guideRow.orientation = "row";
     guideRow.alignChildren = ["left", "center"];
+    guideRow.spacing = 6;
     var showFinalLineInput = guideRow.add("checkbox", undefined, "Setup guide line");
     showFinalLineInput.value = true;
-    var guideHelp = guideRow.add("statictext", undefined, "shows final line while positioning nulls");
+    var guideHelp = guideRow.add("statictext", undefined, "shows the final line while you place the nulls");
     guideHelp.enabled = false;
 
     var motionGroup = addSection(panel, "Motion");
@@ -87,27 +86,33 @@
     var appearanceGrid = appearanceGroup.add("group");
     appearanceGrid.orientation = "row";
     appearanceGrid.alignChildren = ["fill", "top"];
-    appearanceGrid.spacing = 10;
+    appearanceGrid.spacing = 12;
 
-    var appearanceLeft = appearanceGrid.add("group");
-    appearanceLeft.orientation = "column";
-    appearanceLeft.alignChildren = ["fill", "top"];
-    var appearanceRight = appearanceGrid.add("group");
-    appearanceRight.orientation = "column";
-    appearanceRight.alignChildren = ["fill", "top"];
+    var lineGroup = appearanceGrid.add("panel", undefined, "Line & point");
+    lineGroup.orientation = "column";
+    lineGroup.alignChildren = ["left", "top"];
+    lineGroup.margins = 10;
+    lineGroup.spacing = 6;
 
-    var lineColorInput = addColorControl(appearanceLeft, "Line color", "#2563eb");
-    var lineWidthInput = addStepperEdit(appearanceLeft, "Line width", "4", 1, 30, 1, 7);
-    var pointSizeInput = addStepperEdit(appearanceLeft, "Point size", "26", 4, 96, 1, 7);
-    var pointFillInput = addColorControl(appearanceLeft, "Point fill", "#f59e0b");
-    var pointStrokeInput = addColorControl(appearanceRight, "Point stroke", "#ffffff");
-    var pointStrokeWidthInput = addStepperEdit(appearanceRight, "Stroke width", "4", 0, 20, 1, 7);
-    var labelFontInput = addFontControl(appearanceRight, "Font");
-    var labelAlignInput = addAlignmentControl(appearanceRight, "Text align");
-    var labelOrientationInput = addTextOrientationControl(appearanceRight, "Text direction");
-    var labelColorInput = addColorControl(appearanceRight, "Text color", "#92400e");
-    var labelFontSizeInput = addStepperEdit(appearanceRight, "Text size", "36", 8, 120, 1, 7);
-    var labelOffsetInput = addStepperEdit(appearanceRight, "Text Y offset", "-52", -160, 160, 2, 7);
+    var textGroup = appearanceGrid.add("panel", undefined, "Text");
+    textGroup.orientation = "column";
+    textGroup.alignChildren = ["left", "top"];
+    textGroup.margins = 10;
+    textGroup.spacing = 6;
+
+    var lineColorInput = addColorControl(lineGroup, "Line color", "#2563eb");
+    var lineWidthInput = addStepperEdit(lineGroup, "Line width", "4", 1, 30, 1);
+    var pointSizeInput = addStepperEdit(lineGroup, "Point size", "26", 4, 96, 1);
+    var pointFillInput = addColorControl(lineGroup, "Point fill", "#f59e0b");
+    var pointStrokeInput = addColorControl(lineGroup, "Point stroke", "#ffffff");
+    var pointStrokeWidthInput = addStepperEdit(lineGroup, "Stroke width", "4", 0, 20, 1);
+
+    var labelFontInput = addFontControl(textGroup, "Font");
+    var labelAlignInput = addAlignmentControl(textGroup, "Text align");
+    var labelOrientationInput = addTextOrientationControl(textGroup, "Text direction");
+    var labelColorInput = addColorControl(textGroup, "Text color", "#92400e");
+    var labelFontSizeInput = addStepperEdit(textGroup, "Text size", "36", 8, 120, 1);
+    var labelOffsetInput = addStepperEdit(textGroup, "Text Y offset", "-52", -160, 160, 2);
 
     var actions = panel.add("group");
     actions.orientation = "row";
@@ -270,62 +275,82 @@
     return section;
   }
 
-  function addLabeledEdit(parent, label, value, characters) {
-    var row = parent.add("group");
-    row.orientation = "row";
-    row.alignChildren = ["fill", "center"];
+  var LABEL_WIDTH = 96;
 
-    var text = row.add("statictext", undefined, label);
-    text.preferredSize.width = 104;
-
-    var input = row.add("edittext", undefined, value);
-    input.characters = characters || 14;
-    return input;
-  }
-
-  function addStepperEdit(parent, label, value, minValue, maxValue, step, characters) {
+  // Every control row shares one label column width, so labels and fields line
+  // up across the whole panel instead of drifting per-section.
+  function makeRow(parent, label) {
     var row = parent.add("group");
     row.orientation = "row";
     row.alignChildren = ["left", "center"];
+    row.spacing = 6;
 
     var text = row.add("statictext", undefined, label);
-    text.preferredSize.width = 104;
+    text.preferredSize.width = LABEL_WIDTH;
+    return row;
+  }
 
-    var decrementButton = row.add("button", undefined, "-");
-    decrementButton.preferredSize.width = 28;
+  function addLabeledEdit(parent, label, value, width) {
+    var row = makeRow(parent, label);
+    var input = row.add("edittext", undefined, value);
+    input.preferredSize.width = width || 60;
+    return input;
+  }
+
+  function addStepperEdit(parent, label, value, minValue, maxValue, step) {
+    var row = makeRow(parent, label);
 
     var input = row.add("edittext", undefined, value);
-    input.characters = characters || 7;
-    input.preferredSize.width = 54;
+    input.preferredSize.width = 56;
 
-    var incrementButton = row.add("button", undefined, "+");
-    incrementButton.preferredSize.width = 28;
+    // Up/down arrows stacked on the right, like a normal numeric spinner,
+    // instead of separate "-" and "+" buttons.
+    var spinner = row.add("group");
+    spinner.orientation = "column";
+    spinner.spacing = 1;
+    spinner.margins = 0;
 
-    decrementButton.onClick = function () {
-      bumpInput(input, -step, minValue, maxValue);
+    var upButton = spinner.add("button", undefined, "▲");
+    upButton.preferredSize = [20, 11];
+    var downButton = spinner.add("button", undefined, "▼");
+    downButton.preferredSize = [20, 11];
+
+    function nudge(direction) {
+      bumpInput(input, direction * step, minValue, maxValue);
+    }
+
+    upButton.onClick = function () {
+      nudge(1);
     };
 
-    incrementButton.onClick = function () {
-      bumpInput(input, step, minValue, maxValue);
+    downButton.onClick = function () {
+      nudge(-1);
     };
 
     input.onChange = function () {
       normalizeInput(input, value, minValue, maxValue);
     };
 
+    // Arrow keys nudge the value while the field is focused.
+    try {
+      input.addEventListener("keydown", function (event) {
+        if (event.keyName === "Up") {
+          nudge(1);
+          event.preventDefault();
+        } else if (event.keyName === "Down") {
+          nudge(-1);
+          event.preventDefault();
+        }
+      });
+    } catch (ignored) {}
+
     return input;
   }
 
   function addFontControl(parent, label) {
-    var row = parent.add("group");
-    row.orientation = "row";
-    row.alignChildren = ["left", "center"];
-
-    var text = row.add("statictext", undefined, label);
-    text.preferredSize.width = 104;
-
+    var row = makeRow(parent, label);
     var dropdown = row.add("dropdownlist", undefined, []);
-    dropdown.preferredSize.width = 190;
+    dropdown.preferredSize.width = 160;
 
     var choices = collectFontChoices();
     for (var i = 0; i < choices.length; i += 1) {
@@ -338,15 +363,9 @@
   }
 
   function addAlignmentControl(parent, label) {
-    var row = parent.add("group");
-    row.orientation = "row";
-    row.alignChildren = ["left", "center"];
-
-    var text = row.add("statictext", undefined, label);
-    text.preferredSize.width = 104;
-
+    var row = makeRow(parent, label);
     var dropdown = row.add("dropdownlist", undefined, []);
-    dropdown.preferredSize.width = 120;
+    dropdown.preferredSize.width = 110;
 
     var left = dropdown.add("item", "Left");
     left.justificationName = "left";
@@ -360,15 +379,9 @@
   }
 
   function addTextOrientationControl(parent, label) {
-    var row = parent.add("group");
-    row.orientation = "row";
-    row.alignChildren = ["left", "center"];
-
-    var text = row.add("statictext", undefined, label);
-    text.preferredSize.width = 104;
-
+    var row = makeRow(parent, label);
     var dropdown = row.add("dropdownlist", undefined, []);
-    dropdown.preferredSize.width = 120;
+    dropdown.preferredSize.width = 110;
 
     var horizontal = dropdown.add("item", "Horizontal");
     horizontal.orientationName = "horizontal";
@@ -382,26 +395,42 @@
   }
 
   function addColorControl(parent, label, value) {
-    var row = parent.add("group");
-    row.orientation = "row";
-    row.alignChildren = ["left", "center"];
+    var row = makeRow(parent, label);
 
-    var text = row.add("statictext", undefined, label);
-    text.preferredSize.width = 104;
+    var swatch = row.add("panel");
+    swatch.preferredSize = [32, 20];
+    swatch.helpTip = "Click to pick a color";
 
     var input = row.add("edittext", undefined, value);
-    input.characters = 9;
-    input.preferredSize.width = 82;
+    input.preferredSize.width = 76;
+    input.helpTip = "Hex color, e.g. #2563eb";
 
-    var button = row.add("button", undefined, "Pick");
-    button.preferredSize.width = 54;
-    button.onClick = function () {
+    function paintSwatch() {
+      try {
+        var rgb = core.parseHexColor(input.text);
+        var g = swatch.graphics;
+        g.backgroundColor = g.newBrush(g.BrushType.SOLID_COLOR, [rgb[0], rgb[1], rgb[2], 1]);
+      } catch (ignored) {}
+    }
+
+    function pickColor() {
       var selected = $.colorPicker();
       if (selected >= 0) {
         input.text = colorPickerValueToHex(selected);
+        paintSwatch();
       }
+    }
+
+    // Click the swatch to open the color picker (no separate button needed).
+    try {
+      swatch.addEventListener("mousedown", pickColor);
+    } catch (ignored) {}
+
+    input.onChange = function () {
+      paintSwatch();
     };
 
+    paintSwatch();
     return input;
   }
 
