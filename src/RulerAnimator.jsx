@@ -49,7 +49,7 @@
     var title = panel.add("statictext", undefined, "Ruler Animator");
     title.graphics.font = ScriptUI.newFont(title.graphics.font.name, "BOLD", 16);
 
-    var subtitle = panel.add("statictext", undefined, "Start line, labeled points, repeatable ruler animation  ·  build 13");
+    var subtitle = panel.add("statictext", undefined, "Start line, labeled points, repeatable ruler animation  ·  build 17");
     subtitle.enabled = false;
 
     var rangeGroup = addSection(panel, "Range");
@@ -95,10 +95,7 @@
     fitButton.onClick = function () {
       runSafely(function () {
         var comp = activeComp();
-        var prefix = selectedRulerPrefix(comp);
-        if (!prefix) {
-          throw new Error("Select any layer from a generated ruler rig first.");
-        }
+        var prefix = resolveRigPrefix(comp);
         var controller = layerByName(comp, prefix + "_Controller");
         var effects = controller ? controller.property("ADBE Effect Parade") : null;
         var fitEffect = null;
@@ -194,10 +191,7 @@
         var comp = activeComp();
         var settings = readSettings();
         validateOrThrow(settings);
-        var prefix = selectedRulerPrefix(comp);
-        if (!prefix) {
-          throw new Error("Select any layer from a generated ruler rig before updating.");
-        }
+        var prefix = resolveRigPrefix(comp);
 
         // Apply the panel's settings to the selected rig, preserving the
         // Start/End null positions.
@@ -733,19 +727,23 @@
 
     var controller = comp.layers.addNull();
     controller.name = prefix + "_Controller";
-    controller.label = 10;
+    renameNullSource(controller, prefix + "_Controller");
+    controller.label = 8;
     controller.enabled = false;
+    controller.shy = true;
     controller.property("Transform").property("Position").setValue([center[0], center[1] - 120]);
     addControllerEffects(controller, settings);
 
     var startNull = comp.layers.addNull();
-    startNull.name = prefix + "_Start_NULL";
-    startNull.label = 9;
+    startNull.name = prefix + "_Start";
+    renameNullSource(startNull, prefix + "_Start");
+    startNull.label = 8;
     startNull.property("Transform").property("Position").setValue(startPosition);
 
     var endNull = comp.layers.addNull();
-    endNull.name = prefix + "_End_NULL";
-    endNull.label = 9;
+    endNull.name = prefix + "_End";
+    renameNullSource(endNull, prefix + "_End");
+    endNull.label = 8;
     endNull.property("Transform").property("Position").setValue(endPosition);
 
     createGuideLineLayer(comp, prefix, settings);
@@ -798,7 +796,7 @@
   function createLineLayer(comp, prefix, settings) {
     var layer = comp.layers.addShape();
     layer.name = prefix + "_Line";
-    layer.label = 13;
+    layer.label = 8;
     configureShapeLayerAtCompOrigin(layer);
 
     var contents = layer.property("ADBE Root Vectors Group");
@@ -823,6 +821,7 @@
     var layer = comp.layers.addShape();
     layer.name = prefix + "_FinalGuide_Line";
     layer.label = 8;
+    layer.shy = true;
     layer.guideLayer = true;
     layer.enabled = settings.showFinalLine;
     configureShapeLayerAtCompOrigin(layer);
@@ -855,7 +854,7 @@
   function createPointLayer(comp, prefix, settings, index) {
     var layer = comp.layers.addShape();
     layer.name = prefix + "_Point_" + core.pad2(index);
-    layer.label = 14;
+    layer.label = 8;
 
     var contents = layer.property("ADBE Root Vectors Group");
     var group = contents.addProperty("ADBE Vector Group");
@@ -884,7 +883,7 @@
 
     var layer = comp.layers.addText(value);
     layer.name = prefix + "_Label_" + core.pad2(index);
-    layer.label = 14;
+    layer.label = 8;
 
     var source = layer.property("Source Text");
     var doc = source.value;
@@ -921,8 +920,8 @@
 
   function labelAlongLineRotationExpression(prefix) {
     return [
-      'var s = thisComp.layer("' + prefix + '_Start_NULL").transform.position;',
-      'var e = thisComp.layer("' + prefix + '_End_NULL").transform.position;',
+      'var s = thisComp.layer("' + prefix + '_Start").transform.position;',
+      'var e = thisComp.layer("' + prefix + '_End").transform.position;',
       "radiansToDegrees(Math.atan2(e[1] - s[1], e[0] - s[0]));",
     ].join("\n");
   }
@@ -930,8 +929,8 @@
   function linePathExpression(prefix) {
     return [
       'var ctrl = thisComp.layer("' + prefix + '_Controller");',
-      'var s = thisComp.layer("' + prefix + '_Start_NULL").transform.position;',
-      'var e = thisComp.layer("' + prefix + '_End_NULL").transform.position;',
+      'var s = thisComp.layer("' + prefix + '_Start").transform.position;',
+      'var e = thisComp.layer("' + prefix + '_End").transform.position;',
       'var divisions = Math.max(1, ctrl.effect("Divisions")("Slider"));',
       'var endIndex = ctrl.effect("Visible End")("Slider");',
       "var endPoint = s + (e - s) * (endIndex / divisions);",
@@ -961,8 +960,8 @@
   function basePointPositionExpression(prefix, index) {
     return [
       'var ctrl = thisComp.layer("' + prefix + '_Controller");',
-      'var s = thisComp.layer("' + prefix + '_Start_NULL").transform.position;',
-      'var e = thisComp.layer("' + prefix + '_End_NULL").transform.position;',
+      'var s = thisComp.layer("' + prefix + '_Start").transform.position;',
+      'var e = thisComp.layer("' + prefix + '_End").transform.position;',
       'var divisions = Math.max(1, ctrl.effect("Divisions")("Slider"));',
       "var index = " + index + ";",
       "var base = s + (e - s) * (index / divisions);",
@@ -1026,6 +1025,36 @@
     return match ? match[1] : null;
   }
 
+  function rigPrefixesInComp(comp) {
+    var seen = {};
+    var list = [];
+    for (var i = 1; i <= comp.numLayers; i += 1) {
+      var m = /^(Ruler_\d{2,})_/.exec(comp.layer(i).name);
+      if (m && !seen[m[1]]) {
+        seen[m[1]] = true;
+        list.push(m[1]);
+      }
+    }
+    return list;
+  }
+
+  // Use the selected rig if a rig layer is selected; otherwise fall back to the
+  // comp's only rig. Throws a clear message when there is none or several.
+  function resolveRigPrefix(comp) {
+    var selected = selectedRulerPrefix(comp);
+    if (selected) {
+      return selected;
+    }
+    var all = rigPrefixesInComp(comp);
+    if (all.length === 1) {
+      return all[0];
+    }
+    if (all.length > 1) {
+      throw new Error("This comp has several ruler rigs - select a layer from the one you want.");
+    }
+    throw new Error("No ruler rig in this comp yet. Click Create Ruler first.");
+  }
+
   function layerByName(comp, name) {
     for (var i = 1; i <= comp.numLayers; i += 1) {
       if (comp.layer(i).name === name) {
@@ -1035,10 +1064,20 @@
     return null;
   }
 
+  // Also rename a null layer's footage source, so the "Source Name" column
+  // shows the rig name instead of the default "Null N".
+  function renameNullSource(layer, name) {
+    try {
+      if (layer.source) {
+        layer.source.name = name;
+      }
+    } catch (ignored) {}
+  }
+
   function captureNullPositions(comp, prefix) {
     var positions = {};
-    var start = layerByName(comp, prefix + "_Start_NULL");
-    var end = layerByName(comp, prefix + "_End_NULL");
+    var start = layerByName(comp, prefix + "_Start");
+    var end = layerByName(comp, prefix + "_End");
 
     if (start) {
       positions.start = start.property("Transform").property("Position").value;

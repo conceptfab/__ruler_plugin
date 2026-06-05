@@ -40,6 +40,30 @@ test("point size, line width and label offset are driven live from the controlle
   assert.doesNotMatch(source, /function addColor\(/);
 });
 
+test("generated layers share one calm label colour, with shy infrastructure", () => {
+  const source = readPanel();
+
+  // one uniform colour across the whole rig (no rainbow)
+  assert.match(source, /controller\.label = 8;/);
+  assert.match(source, /startNull\.label = 8;/);
+  assert.match(source, /endNull\.label = 8;/);
+  assert.match(source, /layer\.label = 8;/);
+  assert.doesNotMatch(source, /\.label = (5|9|10|11|12|13|14);/);
+  // controller + guide are shy so they can be hidden from the timeline
+  assert.match(source, /controller\.shy = true;/);
+  assert.match(source, /layer\.shy = true;/);
+});
+
+test("null sources are renamed so the Source Name column is not 'Null N'", () => {
+  const source = readPanel();
+
+  assert.match(source, /function renameNullSource\(layer, name\)/);
+  assert.match(source, /layer\.source\.name = name;/);
+  assert.match(source, /renameNullSource\(controller, prefix \+ "_Controller"\)/);
+  assert.match(source, /renameNullSource\(startNull, prefix \+ "_Start"\)/);
+  assert.match(source, /renameNullSource\(endNull, prefix \+ "_End"\)/);
+});
+
 test("a Range-section button pushes the panel timing onto the selected rig", () => {
   const source = readPanel();
 
@@ -53,6 +77,18 @@ test("a Range-section button pushes the panel timing onto the selected rig", () 
   assert.match(source, /setValue\(fitToCompInput\.value \? 1 : 0\)/);
   assert.match(source, /setValue\(parseFloat\(endFrameInput\.text\) \|\| 0\)/);
   assert.doesNotMatch(source, /Load Selected/);
+});
+
+test("rig actions target the comp's only rig when nothing is selected", () => {
+  const source = readPanel();
+
+  assert.match(source, /function resolveRigPrefix\(comp\)/);
+  assert.match(source, /function rigPrefixesInComp\(comp\)/);
+  // both rig actions resolve the prefix the forgiving way
+  assert.match(source, /var prefix = resolveRigPrefix\(comp\);/);
+  // clear guidance instead of a blunt "select a layer" when there is no rig
+  assert.match(source, /No ruler rig in this comp yet\. Click Create Ruler first\./);
+  assert.doesNotMatch(source, /Select any layer from a generated ruler rig/);
 });
 
 test("panel uses readable production-oriented section labels", () => {
@@ -223,8 +259,8 @@ test("panel creates the required ruler layer names", () => {
   const source = readPanel();
 
   assert.match(source, /_Controller/);
-  assert.match(source, /_Start_NULL/);
-  assert.match(source, /_End_NULL/);
+  assert.match(source, /_Start/);
+  assert.match(source, /_End/);
   assert.match(source, /_Line/);
   assert.match(source, /_Point_/);
   assert.match(source, /_Label_/);
