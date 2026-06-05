@@ -1,20 +1,33 @@
 (function rulerAnimatorPanel(thisObj) {
   function loadCore() {
-    if (typeof RulerAnimatorCore !== "undefined") {
-      return RulerAnimatorCore;
+    var REQUIRED = ["serializePreset", "deserializePreset", "validateSettings", "nextPrefix"];
+
+    // Always reload the core that sits next to this panel. After Effects keeps
+    // ExtendScript globals alive across panel reloads, so an older RulerAnimatorCore
+    // cached from an earlier session must not be allowed to shadow an updated file.
+    if ($.fileName) {
+      var panelFile = File($.fileName);
+      var coreFile = File(panelFile.parent.fsName + "/rulerAnimatorCore.js");
+      if (coreFile.exists) {
+        $.evalFile(coreFile);
+      }
     }
-
-    var panelFile = File($.fileName);
-    var coreFile = File(panelFile.parent.fsName + "/rulerAnimatorCore.js");
-
-    if (!coreFile.exists) {
-      throw new Error("Missing dependency: " + coreFile.fsName);
-    }
-
-    $.evalFile(coreFile);
 
     if (typeof RulerAnimatorCore === "undefined") {
-      throw new Error("Unable to load rulerAnimatorCore.js from " + coreFile.fsName);
+      throw new Error("Cannot load rulerAnimatorCore.js. Reinstall both files into the same ScriptUI Panels folder.");
+    }
+
+    var missing = [];
+    for (var i = 0; i < REQUIRED.length; i += 1) {
+      if (typeof RulerAnimatorCore[REQUIRED[i]] !== "function") {
+        missing.push(REQUIRED[i]);
+      }
+    }
+    if (missing.length > 0) {
+      throw new Error(
+        "rulerAnimatorCore.js is outdated (missing: " + missing.join(", ") + ").\n" +
+        "Reinstall both files, then fully restart After Effects."
+      );
     }
 
     return RulerAnimatorCore;
@@ -133,6 +146,45 @@
       });
     };
 
+    var presetActions = panel.add("group");
+    presetActions.orientation = "row";
+    presetActions.alignChildren = ["fill", "center"];
+    presetActions.spacing = 10;
+
+    var savePresetButton = presetActions.add("button", undefined, "Save Preset");
+    var loadPresetButton = presetActions.add("button", undefined, "Load Preset");
+
+    savePresetButton.onClick = function () {
+      runSafely(function () {
+        var json = core.serializePreset(readPresetValues());
+        var file = File.saveDialog("Save ruler preset", "JSON:*.json");
+        if (!file) {
+          return;
+        }
+        if (!/\.json$/i.test(file.name)) {
+          file = new File(file.fsName + ".json");
+        }
+        writeTextFile(file, json);
+      });
+    };
+
+    loadPresetButton.onClick = function () {
+      runSafely(function () {
+        var file = File.openDialog("Load ruler preset", "JSON:*.json");
+        if (!file) {
+          return;
+        }
+        var result = core.deserializePreset(readTextFile(file));
+        if (result.errors.length > 0) {
+          throw new Error(result.errors.join("\n"));
+        }
+        applyPresetValues(result.values);
+        if (result.warnings.length > 0) {
+          alert(result.warnings.join("\n"));
+        }
+      });
+    };
+
     function readSettings() {
       return {
         divisions: parseInt(divisionsInput.text, 10),
@@ -154,6 +206,50 @@
         duration: parseFloat(durationInput.text),
         showFinalLine: showFinalLineInput.value,
       };
+    }
+
+    function readPresetValues() {
+      return {
+        divisions: divisionsInput.text,
+        visibleStart: visibleStartInput.text,
+        visibleEnd: visibleEndInput.text,
+        labels: labelsInput.text,
+        duration: durationInput.text,
+        showFinalLine: showFinalLineInput.value,
+        lineColor: lineColorInput.text,
+        lineWidth: lineWidthInput.text,
+        pointSize: pointSizeInput.text,
+        pointFill: pointFillInput.text,
+        pointStroke: pointStrokeInput.text,
+        pointStrokeWidth: pointStrokeWidthInput.text,
+        labelFont: selectedFontName(labelFontInput),
+        labelAlign: selectedAlignName(labelAlignInput),
+        labelOrientation: selectedTextOrientation(labelOrientationInput),
+        labelColor: labelColorInput.text,
+        labelFontSize: labelFontSizeInput.text,
+        labelOffsetY: labelOffsetInput.text,
+      };
+    }
+
+    function applyPresetValues(values) {
+      divisionsInput.text = values.divisions;
+      visibleStartInput.text = values.visibleStart;
+      visibleEndInput.text = values.visibleEnd;
+      labelsInput.text = values.labels;
+      durationInput.text = values.duration;
+      showFinalLineInput.value = values.showFinalLine;
+      lineColorInput.text = values.lineColor;
+      lineWidthInput.text = values.lineWidth;
+      pointSizeInput.text = values.pointSize;
+      pointFillInput.text = values.pointFill;
+      pointStrokeInput.text = values.pointStroke;
+      pointStrokeWidthInput.text = values.pointStrokeWidth;
+      labelColorInput.text = values.labelColor;
+      labelFontSizeInput.text = values.labelFontSize;
+      labelOffsetInput.text = values.labelOffsetY;
+      selectDropdownByProperty(labelFontInput, "postScriptName", values.labelFont);
+      selectDropdownByProperty(labelAlignInput, "justificationName", values.labelAlign);
+      selectDropdownByProperty(labelOrientationInput, "orientationName", values.labelOrientation);
     }
 
     panel.layout.layout(true);
@@ -391,6 +487,25 @@
     return dropdown.selection.orientationName;
   }
 
+  function selectedAlignName(dropdown) {
+    if (!dropdown.selection || !dropdown.selection.justificationName) {
+      return "center";
+    }
+    return dropdown.selection.justificationName;
+  }
+
+  function selectDropdownByProperty(dropdown, propertyName, value) {
+    for (var i = 0; i < dropdown.items.length; i += 1) {
+      if (dropdown.items[i][propertyName] === value) {
+        dropdown.selection = i;
+        return;
+      }
+    }
+    if (dropdown.items.length > 0) {
+      dropdown.selection = 0;
+    }
+  }
+
   function colorPickerValueToHex(value) {
     var red = (value >> 16) & 255;
     var green = (value >> 8) & 255;
@@ -440,6 +555,33 @@
         app.endUndoGroup();
       } catch (ignored) {}
     }
+  }
+
+  function writeTextFile(file, text) {
+    var data = String(text);
+    if (data.length === 0) {
+      throw new Error("Refusing to write an empty preset.");
+    }
+    file.lineFeed = "Unix";
+    file.encoding = "UTF-8";
+    if (!file.open("w")) {
+      throw new Error("Cannot open file for writing: " + file.fsName);
+    }
+    var ok = file.write(data);
+    file.close();
+    if (!ok || file.length === 0) {
+      throw new Error("Could not write preset to " + file.fsName + " (0 bytes written).");
+    }
+  }
+
+  function readTextFile(file) {
+    file.encoding = "UTF-8";
+    if (!file.open("r")) {
+      throw new Error("Cannot open file for reading: " + file.fsName);
+    }
+    var text = file.read();
+    file.close();
+    return text;
   }
 
   function activeComp() {
@@ -616,7 +758,7 @@
     stroke.property("ADBE Vector Stroke Color").setValue(settings.pointStroke);
     stroke.property("ADBE Vector Stroke Width").setValue(settings.pointStrokeWidth);
 
-    layer.property("Transform").property("Position").expression = pointPositionExpression(prefix, settings.divisions, index);
+    layer.property("Transform").property("Position").expression = pointPositionExpression(prefix, index);
     layer.property("Transform").property("Opacity").expression = pointOpacityExpression(prefix, index);
     return layer;
   }
@@ -641,7 +783,7 @@
     doc.justification = settings.labelJustification || ParagraphJustification.CENTER_JUSTIFY;
     source.setValue(doc);
 
-    layer.property("Transform").property("Position").expression = labelPositionExpression(prefix, settings.divisions, index, settings.labelOffsetY);
+    layer.property("Transform").property("Position").expression = labelPositionExpression(prefix, index, settings.labelOffsetY);
     applyLabelOrientation(layer, prefix, settings);
     layer.property("Transform").property("Opacity").expression = pointOpacityExpression(prefix, index);
     return layer;
@@ -689,29 +831,30 @@
       'var startIndex = ctrl.effect("Visible Start")("Slider");',
       'var endIndex = ctrl.effect("Visible End")("Slider");',
       'var duration = ctrl.effect("Animation Duration")("Slider");',
-      "var startPercent = (startIndex / endIndex) * 100;",
+      "var startPercent = endIndex > 0 ? (startIndex / endIndex) * 100 : 0;",
       "linear(time, inPoint, inPoint + duration, startPercent, 100);",
     ].join("\n");
   }
 
-  function pointPositionExpression(prefix, divisions, index) {
-    var lines = basePointPositionExpression(prefix, divisions, index);
+  function pointPositionExpression(prefix, index) {
+    var lines = basePointPositionExpression(prefix, index);
     lines.push("base;");
     return lines.join("\n");
   }
 
-  function basePointPositionExpression(prefix, divisions, index) {
+  function basePointPositionExpression(prefix, index) {
     return [
+      'var ctrl = thisComp.layer("' + prefix + '_Controller");',
       'var s = thisComp.layer("' + prefix + '_Start_NULL").transform.position;',
       'var e = thisComp.layer("' + prefix + '_End_NULL").transform.position;',
-      "var divisions = " + divisions + ";",
+      'var divisions = ctrl.effect("Divisions")("Slider");',
       "var index = " + index + ";",
       "var base = s + (e - s) * (index / divisions);",
     ];
   }
 
-  function labelPositionExpression(prefix, divisions, index, offsetY) {
-    var lines = basePointPositionExpression(prefix, divisions, index);
+  function labelPositionExpression(prefix, index, offsetY) {
+    var lines = basePointPositionExpression(prefix, index);
     lines.push("base + [0, " + offsetY + "];");
     return lines.join("\n");
   }

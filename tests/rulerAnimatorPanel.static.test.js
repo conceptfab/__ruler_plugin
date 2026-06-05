@@ -91,6 +91,16 @@ test("panel loads the core file relative to the panel file at runtime", () => {
   assert.match(source, /File\(\$\.fileName\)/);
 });
 
+test("panel reloads core fresh and verifies it (guards against a stale cached global)", () => {
+  const source = readPanel();
+
+  // The old short-circuit returned a cached global before reading the on-disk
+  // core, so a stale version could shadow an updated file. It must be gone.
+  assert.doesNotMatch(source, /if \(typeof RulerAnimatorCore !== "undefined"\) \{\s*return RulerAnimatorCore;/);
+  assert.match(source, /var REQUIRED = \[/);
+  assert.match(source, /rulerAnimatorCore\.js is outdated/);
+});
+
 test("panel includes final line positioning preview support", () => {
   const source = readPanel();
 
@@ -118,7 +128,7 @@ test("panel draws the animated line from the start point to the visible end", ()
 test("panel starts the line reveal at the first labeled point", () => {
   const source = readPanel();
 
-  assert.match(source, /var startPercent = \(startIndex \/ endIndex\) \* 100;/);
+  assert.match(source, /var startPercent = endIndex > 0 \? \(startIndex \/ endIndex\) \* 100 : 0;/);
   assert.match(source, /linear\(time, inPoint, inPoint \+ duration, startPercent, 100\);/);
 });
 
@@ -181,4 +191,41 @@ test("panel applies horizontal vertical or line-parallel rotation to label text 
   assert.match(source, /rotation\.expression = labelAlongLineRotationExpression\(prefix\);/);
   assert.match(source, /Math\.atan2\(e\[1\] - s\[1\], e\[0\] - s\[0\]\)/);
   assert.match(source, /radiansToDegrees/);
+});
+
+test("panel exposes save and load preset actions backed by the core", () => {
+  const source = readPanel();
+
+  assert.match(source, /Save Preset/);
+  assert.match(source, /Load Preset/);
+  assert.match(source, /core\.serializePreset\(readPresetValues\(\)\)/);
+  assert.match(source, /core\.deserializePreset\(readTextFile\(file\)\)/);
+});
+
+test("panel saves and loads presets through JSON file dialogs", () => {
+  const source = readPanel();
+
+  assert.match(source, /File\.saveDialog\("Save ruler preset"/);
+  assert.match(source, /File\.openDialog\("Load ruler preset"/);
+  assert.match(source, /function writeTextFile\(file, text\)/);
+  assert.match(source, /function readTextFile\(file\)/);
+  assert.match(source, /file\.encoding = "UTF-8";/);
+});
+
+test("panel write guards against producing an empty preset file", () => {
+  const source = readPanel();
+
+  assert.match(source, /Refusing to write an empty preset/);
+  assert.match(source, /file\.lineFeed = "Unix";/);
+  assert.match(source, /file\.length === 0/);
+});
+
+test("panel collects all values and re-selects dropdowns on load", () => {
+  const source = readPanel();
+
+  assert.match(source, /function readPresetValues\(\)/);
+  assert.match(source, /function applyPresetValues\(values\)/);
+  assert.match(source, /selectDropdownByProperty\(labelFontInput, "postScriptName", values\.labelFont\)/);
+  assert.match(source, /selectDropdownByProperty\(labelAlignInput, "justificationName", values\.labelAlign\)/);
+  assert.match(source, /selectDropdownByProperty\(labelOrientationInput, "orientationName", values\.labelOrientation\)/);
 });

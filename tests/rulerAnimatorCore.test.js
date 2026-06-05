@@ -69,3 +69,114 @@ test("nextPrefix returns the next available two digit ruler prefix", () => {
 
   assert.equal(core.nextPrefix(existing, "Ruler"), "Ruler_03");
 });
+
+test("serializePreset writes a typed, versioned snapshot and fills missing fields", () => {
+  const json = core.serializePreset({ divisions: "6", labels: 'a "quoted" label' });
+  const parsed = JSON.parse(json);
+
+  assert.equal(parsed.type, "ruler-animator-preset");
+  assert.equal(parsed.version, 1);
+  assert.equal(parsed.values.divisions, "6");
+  assert.equal(parsed.values.labels, 'a "quoted" label');
+  assert.equal(parsed.values.lineColor, "#2563eb");
+  assert.equal(parsed.values.showFinalLine, true);
+});
+
+test("deserializePreset round-trips every field including quoted labels", () => {
+  const values = {
+    divisions: "8",
+    visibleStart: "2",
+    visibleEnd: "8",
+    labels: 'a "quoted" label, b',
+    duration: "2",
+    showFinalLine: false,
+    lineColor: "#112233",
+    lineWidth: "5",
+    pointSize: "30",
+    pointFill: "#445566",
+    pointStroke: "#778899",
+    pointStrokeWidth: "3",
+    labelFont: "ArialMT",
+    labelAlign: "left",
+    labelOrientation: "vertical",
+    labelColor: "#aabbcc",
+    labelFontSize: "40",
+    labelOffsetY: "-60",
+  };
+
+  const result = core.deserializePreset(core.serializePreset(values));
+
+  assert.deepEqual(result.errors, []);
+  assert.deepEqual(result.values, values);
+});
+
+test("deserializePreset rejects non-JSON without throwing", () => {
+  const result = core.deserializePreset("this is not json {");
+
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /valid JSON/);
+});
+
+test("deserializePreset rejects JSON that is not a ruler preset", () => {
+  const result = core.deserializePreset(JSON.stringify({ type: "other", values: {} }));
+
+  assert.equal(result.errors.length, 1);
+  assert.match(result.errors[0], /Ruler Animator preset/);
+});
+
+test("deserializePreset fills defaults for missing fields and drops unknown keys", () => {
+  const json = JSON.stringify({
+    type: "ruler-animator-preset",
+    version: 1,
+    values: { divisions: "3", mysteryField: "ignored" },
+  });
+  const result = core.deserializePreset(json);
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.values.divisions, "3");
+  assert.equal(result.values.labelColor, "#92400e");
+  assert.equal(result.values.mysteryField, undefined);
+});
+
+test("deserializePreset warns when the preset version is newer", () => {
+  const result = core.deserializePreset(
+    JSON.stringify({ type: "ruler-animator-preset", version: 99, values: {} })
+  );
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.warnings.length, 1);
+});
+
+test("serializePreset never returns empty (guards against blank save files)", () => {
+  assert.ok(core.serializePreset({}).length > 0);
+  assert.ok(core.serializePreset(undefined).length > 0);
+});
+
+test("serializePreset output parses with both the native and built-in parser", () => {
+  const json = core.serializePreset({ labels: 'x "y" z', labelOffsetY: "-52", showFinalLine: false });
+
+  // Output is standard JSON the native engine accepts...
+  const native = JSON.parse(json);
+  assert.equal(native.type, "ruler-animator-preset");
+  assert.equal(native.values.labels, 'x "y" z');
+  assert.equal(native.values.showFinalLine, false);
+
+  // ...and the dependency-free parser that runs inside After Effects agrees.
+  const ours = core.deserializePreset(json);
+  assert.deepEqual(ours.errors, []);
+  assert.equal(ours.values.labels, 'x "y" z');
+  assert.equal(ours.values.labelOffsetY, "-52");
+  assert.equal(ours.values.showFinalLine, false);
+});
+
+test("deserializePreset reads hand-edited JSON (reordered keys, whitespace, BOM)", () => {
+  const json =
+    "﻿{\n\t\"values\" : { \"divisions\":\"9\" ,\n  \"labelAlign\" : \"right\" } ,\n" +
+    "  \"version\": 1, \"type\":\"ruler-animator-preset\"\n}\n";
+  const result = core.deserializePreset(json);
+
+  assert.deepEqual(result.errors, []);
+  assert.equal(result.values.divisions, "9");
+  assert.equal(result.values.labelAlign, "right");
+  assert.equal(result.values.duration, "1.2");
+});
