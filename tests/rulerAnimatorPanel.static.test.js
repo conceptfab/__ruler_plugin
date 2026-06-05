@@ -16,6 +16,30 @@ test("panel exposes the required creation and update actions", () => {
   assert.match(source, /Update Selected/);
 });
 
+test("Update Selected applies panel settings to the rig and preserves nulls", () => {
+  const source = readPanel();
+
+  // update rebuilds from the current panel settings while keeping the nulls
+  assert.match(source, /var positions = captureNullPositions\(comp, prefix\);/);
+  assert.match(source, /removeRigLayers\(comp, prefix\);/);
+  assert.match(source, /createRig\(comp, settings, prefix, positions\);/);
+});
+
+test("a Range-section button pushes the panel timing onto the selected rig", () => {
+  const source = readPanel();
+
+  assert.match(source, /Apply timing to selected rig/);
+  // it lives with the timing controls, not the bottom action row
+  assert.match(source, /var fitButtonRow = rangeGroup\.add\("group"\)/);
+  // it writes the panel's fit + start/end frame straight to the controller
+  assert.match(source, /effects\.property\("Fit To Comp"\)/);
+  assert.match(source, /effects\.property\("Start Frame"\)/);
+  assert.match(source, /effects\.property\("End Frame"\)/);
+  assert.match(source, /setValue\(fitToCompInput\.value \? 1 : 0\)/);
+  assert.match(source, /setValue\(parseFloat\(endFrameInput\.text\) \|\| 0\)/);
+  assert.doesNotMatch(source, /Load Selected/);
+});
+
 test("panel uses readable production-oriented section labels", () => {
   const source = readPanel();
 
@@ -33,10 +57,10 @@ test("panel offers color picking on every color row", () => {
   const source = readPanel();
 
   assert.match(source, /\$\.colorPicker\(\)/);
-  assert.match(source, /addColorControl\(lineGroup, "Line color"/);
-  assert.match(source, /addColorControl\(lineGroup, "Point fill"/);
-  assert.match(source, /addColorControl\(lineGroup, "Point stroke"/);
-  assert.match(source, /addColorControl\(textGroup, "Text color"/);
+  assert.match(source, /addColorControl\(lineColumn, "Line color"/);
+  assert.match(source, /addColorControl\(lineColumn, "Point fill"/);
+  assert.match(source, /addColorControl\(lineColumn, "Point stroke"/);
+  assert.match(source, /addColorControl\(textColumn, "Text color"/);
 });
 
 test("panel shows a color swatch next to each color field", () => {
@@ -47,16 +71,17 @@ test("panel shows a color swatch next to each color field", () => {
   assert.match(source, /core\.parseHexColor\(input\.text\)/);
   // the swatch itself opens the picker on click
   assert.match(source, /swatch\.addEventListener\("mousedown", pickColor\)/);
+  // repaint is exposed so loading a preset can refresh the swatch
+  assert.match(source, /input\.repaintSwatch = paintSwatch/);
 });
 
 test("panel uses visible stepper controls for numeric visual controls", () => {
   const source = readPanel();
 
-  assert.match(source, /addStepperEdit\(lineGroup, "Line width"/);
-  assert.match(source, /addStepperEdit\(lineGroup, "Point size"/);
-  assert.match(source, /addStepperEdit\(lineGroup, "Stroke width"/);
-  assert.match(source, /addStepperEdit\(textGroup, "Text size"/);
-  assert.match(source, /addStepperEdit\(rangeGroup, "Duration \(s\)"/);
+  assert.match(source, /addStepperEdit\(lineColumn, "Line width"/);
+  assert.match(source, /addStepperEdit\(lineColumn, "Point size"/);
+  assert.match(source, /addStepperEdit\(lineColumn, "Stroke width"/);
+  assert.match(source, /addStepperEdit\(textColumn, "Text size"/);
   // up/down arrow spinner stacked on the right, plus arrow-key support
   assert.match(source, /var spinner = row\.add\("group"\)/);
   assert.match(source, /spinner\.orientation = "column"/);
@@ -68,9 +93,9 @@ test("panel uses visible stepper controls for numeric visual controls", () => {
 test("panel exposes human text controls for font and alignment", () => {
   const source = readPanel();
 
-  assert.match(source, /addFontControl\(textGroup, "Font"/);
-  assert.match(source, /addAlignmentControl\(textGroup, "Text align"/);
-  assert.match(source, /addTextOrientationControl\(textGroup, "Text direction"/);
+  assert.match(source, /addFontControl\(textColumn, "Font"/);
+  assert.match(source, /addAlignmentControl\(textColumn, "Text align"/);
+  assert.match(source, /addTextOrientationControl\(textColumn, "Text direction"/);
   assert.match(source, /app\.fonts\.allFonts/);
   assert.match(source, /"Left"/);
   assert.match(source, /"Center"/);
@@ -144,14 +169,35 @@ test("panel starts the line reveal at the first labeled point", () => {
   const source = readPanel();
 
   assert.match(source, /var startPercent = endIndex > 0 \? \(startIndex \/ endIndex\) \* 100 : 0;/);
-  assert.match(source, /linear\(time, inPoint, inPoint \+ duration, startPercent, 100\);/);
+  assert.match(source, /linear\(time, t0, t1, startPercent, 100\);/);
 });
 
 test("panel shows the first labeled point at animation start", () => {
   const source = readPanel();
 
   assert.match(source, /if \(index <= startIndex\) \{/);
-  assert.match(source, /var progress = linear\(time, inPoint, inPoint \+ duration, startIndex, endIndex\);/);
+  assert.match(source, /var progress = linear\(time, t0, t1, startIndex, endIndex\);/);
+});
+
+test("panel offers fit-to-comp and an explicit start/end frame range", () => {
+  const source = readPanel();
+
+  // UI: a fit-to-comp checkbox plus start/end frame fields
+  assert.match(source, /Fit animation to composition/);
+  assert.match(source, /makeRow\(rangeGroup, "Frame range"\)/);
+  assert.match(source, /var startFrameInput = framesRow\.add\("edittext"/);
+  assert.match(source, /var endFrameInput = framesRow\.add\("edittext"/);
+  assert.match(source, /function syncFramesEnabled\(\)/);
+
+  // controller carries the timing as Fit To Comp / Start Frame / End Frame
+  assert.match(source, /addCheckbox\(controller, "Fit To Comp", settings\.fitToComp\)/);
+  assert.match(source, /addSlider\(controller, "Start Frame", settings\.startFrame\)/);
+  assert.match(source, /addSlider\(controller, "End Frame", settings\.endFrame\)/);
+
+  // expressions span the whole comp when fitting, else the chosen frame range
+  assert.match(source, /var fit = ctrl\.effect\("Fit To Comp"\)\("Checkbox"\);/);
+  assert.match(source, /fit > 0\.5 \? thisComp\.duration - thisComp\.frameDuration \* 2 : ctrl\.effect\("End Frame"\)\("Slider"\) \* thisComp\.frameDuration/);
+  assert.doesNotMatch(source, /Animation Duration/);
 });
 
 test("panel creates the required ruler layer names", () => {
@@ -243,4 +289,6 @@ test("panel collects all values and re-selects dropdowns on load", () => {
   assert.match(source, /selectDropdownByProperty\(labelFontInput, "postScriptName", values\.labelFont\)/);
   assert.match(source, /selectDropdownByProperty\(labelAlignInput, "justificationName", values\.labelAlign\)/);
   assert.match(source, /selectDropdownByProperty\(labelOrientationInput, "orientationName", values\.labelOrientation\)/);
+  // loading a preset repaints the color swatches (programmatic .text won't)
+  assert.match(source, /refreshColorSwatch\(lineColorInput\)/);
 });

@@ -49,7 +49,7 @@
     var title = panel.add("statictext", undefined, "Ruler Animator");
     title.graphics.font = ScriptUI.newFont(title.graphics.font.name, "BOLD", 16);
 
-    var subtitle = panel.add("statictext", undefined, "Start line, labeled points, repeatable ruler animation");
+    var subtitle = panel.add("statictext", undefined, "Start line, labeled points, repeatable ruler animation  ·  build 10");
     subtitle.enabled = false;
 
     var rangeGroup = addSection(panel, "Range");
@@ -65,7 +65,65 @@
     var pointsHelp = pointsRow.add("statictext", undefined, "(point 0 = start, always shown)");
     pointsHelp.enabled = false;
 
-    var durationInput = addStepperEdit(rangeGroup, "Duration (s)", "1.2", 0.1, 5, 0.1);
+    var fitRow = rangeGroup.add("group");
+    fitRow.orientation = "row";
+    fitRow.alignChildren = ["left", "center"];
+    fitRow.spacing = 6;
+    var fitToCompInput = fitRow.add("checkbox", undefined, "Fit animation to composition");
+    fitToCompInput.value = true;
+
+    var framesRow = makeRow(rangeGroup, "Frame range");
+    var startFrameInput = framesRow.add("edittext", undefined, "0");
+    startFrameInput.preferredSize.width = 50;
+    framesRow.add("statictext", undefined, "to");
+    var endFrameInput = framesRow.add("edittext", undefined, "60");
+    endFrameInput.preferredSize.width = 50;
+    var framesHelp = framesRow.add("statictext", undefined, "(start / end frame; used when not fitting)");
+    framesHelp.enabled = false;
+
+    function syncFramesEnabled() {
+      var manual = !fitToCompInput.value;
+      startFrameInput.enabled = manual;
+      endFrameInput.enabled = manual;
+    }
+    fitToCompInput.onClick = syncFramesEnabled;
+    syncFramesEnabled();
+
+    var fitButtonRow = rangeGroup.add("group");
+    fitButtonRow.orientation = "row";
+    fitButtonRow.alignChildren = ["left", "center"];
+    var fitButton = fitButtonRow.add("button", undefined, "Apply timing to selected rig");
+    fitButton.helpTip = "Select a rig layer, then click to push the fit / frame range above onto that rig.";
+
+    // Push the panel's timing (fit-to-comp or the frame range) straight onto
+    // the selected rig's controller, so it takes effect without rebuilding.
+    fitButton.onClick = function () {
+      runSafely(function () {
+        var comp = activeComp();
+        var prefix = selectedRulerPrefix(comp);
+        if (!prefix) {
+          throw new Error("Select any layer from a generated ruler rig first.");
+        }
+        var controller = layerByName(comp, prefix + "_Controller");
+        var effects = controller ? controller.property("ADBE Effect Parade") : null;
+        var fitEffect = null;
+        var startEffect = null;
+        var endEffect = null;
+        try {
+          fitEffect = effects.property("Fit To Comp");
+          startEffect = effects.property("Start Frame");
+          endEffect = effects.property("End Frame");
+        } catch (ignored) {}
+        if (!fitEffect || !startEffect || !endEffect) {
+          throw new Error("This rig was made with an older version. Recreate it with this panel to control timing.");
+        }
+        app.beginUndoGroup("Apply Ruler Timing");
+        fitEffect.property("ADBE Checkbox Control-0001").setValue(fitToCompInput.value ? 1 : 0);
+        startEffect.property("ADBE Slider Control-0001").setValue(parseFloat(startFrameInput.text) || 0);
+        endEffect.property("ADBE Slider Control-0001").setValue(parseFloat(endFrameInput.text) || 0);
+        app.endUndoGroup();
+      });
+    };
 
     var labelsInput = addLabeledEdit(rangeGroup, "Values", "80 cm, 100 cm, 120 cm", 240);
 
@@ -79,40 +137,43 @@
     guideHelp.enabled = false;
 
     var motionGroup = addSection(panel, "Motion");
-    var motionHelp = motionGroup.add("statictext", undefined, "At frame 0: Start -> first label point is already drawn. Animation continues from there.");
+    var motionHelp = motionGroup.add("statictext", undefined, "At the start, Start -> first label point is already drawn; the rest reveals over the timing set in Range (fit to comp, or the frame range).");
     motionHelp.enabled = false;
 
     var appearanceGroup = addSection(panel, "Appearance");
-    var appearanceGrid = appearanceGroup.add("group");
-    appearanceGrid.orientation = "row";
-    appearanceGrid.alignChildren = ["fill", "top"];
-    appearanceGrid.spacing = 12;
 
-    var lineGroup = appearanceGrid.add("panel", undefined, "Line & point");
-    lineGroup.orientation = "column";
-    lineGroup.alignChildren = ["left", "top"];
-    lineGroup.margins = 10;
-    lineGroup.spacing = 6;
+    // Two columns side by side. "left" (not "fill") keeps each column at its
+    // natural width so they sit next to each other and cannot overlap.
+    var appearanceColumns = appearanceGroup.add("group");
+    appearanceColumns.orientation = "row";
+    appearanceColumns.alignChildren = ["left", "top"];
+    appearanceColumns.spacing = 18;
 
-    var textGroup = appearanceGrid.add("panel", undefined, "Text");
-    textGroup.orientation = "column";
-    textGroup.alignChildren = ["left", "top"];
-    textGroup.margins = 10;
-    textGroup.spacing = 6;
+    var lineColumn = appearanceColumns.add("group");
+    lineColumn.orientation = "column";
+    lineColumn.alignChildren = ["left", "top"];
+    lineColumn.spacing = 6;
 
-    var lineColorInput = addColorControl(lineGroup, "Line color", "#2563eb");
-    var lineWidthInput = addStepperEdit(lineGroup, "Line width", "4", 1, 30, 1);
-    var pointSizeInput = addStepperEdit(lineGroup, "Point size", "26", 4, 96, 1);
-    var pointFillInput = addColorControl(lineGroup, "Point fill", "#f59e0b");
-    var pointStrokeInput = addColorControl(lineGroup, "Point stroke", "#ffffff");
-    var pointStrokeWidthInput = addStepperEdit(lineGroup, "Stroke width", "4", 0, 20, 1);
+    var textColumn = appearanceColumns.add("group");
+    textColumn.orientation = "column";
+    textColumn.alignChildren = ["left", "top"];
+    textColumn.spacing = 6;
 
-    var labelFontInput = addFontControl(textGroup, "Font");
-    var labelAlignInput = addAlignmentControl(textGroup, "Text align");
-    var labelOrientationInput = addTextOrientationControl(textGroup, "Text direction");
-    var labelColorInput = addColorControl(textGroup, "Text color", "#92400e");
-    var labelFontSizeInput = addStepperEdit(textGroup, "Text size", "36", 8, 120, 1);
-    var labelOffsetInput = addStepperEdit(textGroup, "Text Y offset", "-52", -160, 160, 2);
+    addSubHeader(lineColumn, "Line & point");
+    var lineColorInput = addColorControl(lineColumn, "Line color", "#2563eb");
+    var lineWidthInput = addStepperEdit(lineColumn, "Line width", "4", 1, 30, 1);
+    var pointSizeInput = addStepperEdit(lineColumn, "Point size", "26", 4, 96, 1);
+    var pointFillInput = addColorControl(lineColumn, "Point fill", "#f59e0b");
+    var pointStrokeInput = addColorControl(lineColumn, "Point stroke", "#ffffff");
+    var pointStrokeWidthInput = addStepperEdit(lineColumn, "Stroke width", "4", 0, 20, 1);
+
+    addSubHeader(textColumn, "Text");
+    var labelFontInput = addFontControl(textColumn, "Font");
+    var labelAlignInput = addAlignmentControl(textColumn, "Text align");
+    var labelOrientationInput = addTextOrientationControl(textColumn, "Text direction");
+    var labelColorInput = addColorControl(textColumn, "Text color", "#92400e");
+    var labelFontSizeInput = addStepperEdit(textColumn, "Text size", "36", 8, 120, 1);
+    var labelOffsetInput = addStepperEdit(textColumn, "Text Y offset", "-52", -160, 160, 2);
 
     var actions = panel.add("group");
     actions.orientation = "row";
@@ -143,6 +204,8 @@
           throw new Error("Select any layer from a generated ruler rig before updating.");
         }
 
+        // Apply the panel's settings to the selected rig, preserving the
+        // Start/End null positions.
         var positions = captureNullPositions(comp, prefix);
         app.beginUndoGroup("Update Selected Rig");
         removeRigLayers(comp, prefix);
@@ -208,7 +271,9 @@
         labelColor: core.parseHexColor(labelColorInput.text),
         labelFontSize: parseFloat(labelFontSizeInput.text),
         labelOffsetY: parseFloat(labelOffsetInput.text),
-        duration: parseFloat(durationInput.text),
+        fitToComp: fitToCompInput.value,
+        startFrame: parseFloat(startFrameInput.text),
+        endFrame: parseFloat(endFrameInput.text),
         showFinalLine: showFinalLineInput.value,
       };
     }
@@ -219,7 +284,9 @@
         visibleStart: visibleStartInput.text,
         visibleEnd: visibleEndInput.text,
         labels: labelsInput.text,
-        duration: durationInput.text,
+        fitToComp: fitToCompInput.value,
+        startFrame: startFrameInput.text,
+        endFrame: endFrameInput.text,
         showFinalLine: showFinalLineInput.value,
         lineColor: lineColorInput.text,
         lineWidth: lineWidthInput.text,
@@ -241,7 +308,10 @@
       visibleStartInput.text = values.visibleStart;
       visibleEndInput.text = values.visibleEnd;
       labelsInput.text = values.labels;
-      durationInput.text = values.duration;
+      fitToCompInput.value = values.fitToComp;
+      startFrameInput.text = values.startFrame;
+      endFrameInput.text = values.endFrame;
+      syncFramesEnabled();
       showFinalLineInput.value = values.showFinalLine;
       lineColorInput.text = values.lineColor;
       lineWidthInput.text = values.lineWidth;
@@ -255,6 +325,11 @@
       selectDropdownByProperty(labelFontInput, "postScriptName", values.labelFont);
       selectDropdownByProperty(labelAlignInput, "justificationName", values.labelAlign);
       selectDropdownByProperty(labelOrientationInput, "orientationName", values.labelOrientation);
+
+      refreshColorSwatch(lineColorInput);
+      refreshColorSwatch(pointFillInput);
+      refreshColorSwatch(pointStrokeInput);
+      refreshColorSwatch(labelColorInput);
     }
 
     panel.layout.layout(true);
@@ -273,6 +348,14 @@
     section.margins = 10;
     section.spacing = 7;
     return section;
+  }
+
+  function addSubHeader(parent, text) {
+    var header = parent.add("statictext", undefined, text);
+    try {
+      header.graphics.font = ScriptUI.newFont(header.graphics.font.name, "BOLD", 12);
+    } catch (ignored) {}
+    return header;
   }
 
   var LABEL_WIDTH = 96;
@@ -430,6 +513,10 @@
       paintSwatch();
     };
 
+    // Programmatic .text changes (e.g. loading a preset) don't fire onChange,
+    // so expose the repaint for applyPresetValues to call explicitly.
+    input.repaintSwatch = paintSwatch;
+
     paintSwatch();
     return input;
   }
@@ -533,6 +620,14 @@
     if (dropdown.items.length > 0) {
       dropdown.selection = 0;
     }
+  }
+
+  function refreshColorSwatch(input) {
+    try {
+      if (input && typeof input.repaintSwatch === "function") {
+        input.repaintSwatch();
+      }
+    } catch (ignored) {}
   }
 
   function colorPickerValueToHex(value) {
@@ -681,7 +776,9 @@
     addSlider(controller, "Divisions", settings.divisions);
     addSlider(controller, "Visible Start", settings.visibleStart);
     addSlider(controller, "Visible End", settings.visibleEnd);
-    addSlider(controller, "Animation Duration", settings.duration);
+    addCheckbox(controller, "Fit To Comp", settings.fitToComp);
+    addSlider(controller, "Start Frame", settings.startFrame);
+    addSlider(controller, "End Frame", settings.endFrame);
     addSlider(controller, "Line Width", settings.lineWidth);
     addSlider(controller, "Point Size", settings.pointSize);
     addSlider(controller, "Label Offset Y", settings.labelOffsetY);
@@ -859,9 +956,11 @@
       'var ctrl = thisComp.layer("' + prefix + '_Controller");',
       'var startIndex = ctrl.effect("Visible Start")("Slider");',
       'var endIndex = ctrl.effect("Visible End")("Slider");',
-      'var duration = ctrl.effect("Animation Duration")("Slider");',
+      'var fit = ctrl.effect("Fit To Comp")("Checkbox");',
+      'var t0 = fit > 0.5 ? 0 : ctrl.effect("Start Frame")("Slider") * thisComp.frameDuration;',
+      'var t1 = fit > 0.5 ? thisComp.duration - thisComp.frameDuration * 2 : ctrl.effect("End Frame")("Slider") * thisComp.frameDuration;',
       "var startPercent = endIndex > 0 ? (startIndex / endIndex) * 100 : 0;",
-      "linear(time, inPoint, inPoint + duration, startPercent, 100);",
+      "linear(time, t0, t1, startPercent, 100);",
     ].join("\n");
   }
 
@@ -897,12 +996,14 @@
       'var ctrl = thisComp.layer("' + prefix + '_Controller");',
       'var startIndex = ctrl.effect("Visible Start")("Slider");',
       'var endIndex = ctrl.effect("Visible End")("Slider");',
-      'var duration = ctrl.effect("Animation Duration")("Slider");',
+      'var fit = ctrl.effect("Fit To Comp")("Checkbox");',
+      'var t0 = fit > 0.5 ? 0 : ctrl.effect("Start Frame")("Slider") * thisComp.frameDuration;',
+      'var t1 = fit > 0.5 ? thisComp.duration - thisComp.frameDuration * 2 : ctrl.effect("End Frame")("Slider") * thisComp.frameDuration;',
       "var index = " + index + ";",
       "if (index <= startIndex) {",
       "  100;",
       "} else {",
-      "var progress = linear(time, inPoint, inPoint + duration, startIndex, endIndex);",
+      "var progress = linear(time, t0, t1, startIndex, endIndex);",
       "linear(progress, index - 0.05, index, 0, 100);",
       "}",
     ].join("\n");
@@ -924,6 +1025,15 @@
     var name = comp.selectedLayers[0].name;
     var match = /^(Ruler_\d{2})_/.exec(name);
     return match ? match[1] : null;
+  }
+
+  function layerByName(comp, name) {
+    for (var i = 1; i <= comp.numLayers; i += 1) {
+      if (comp.layer(i).name === name) {
+        return comp.layer(i);
+      }
+    }
+    return null;
   }
 
   function captureNullPositions(comp, prefix) {
@@ -949,15 +1059,6 @@
         layer.remove();
       }
     }
-  }
-
-  function layerByName(comp, name) {
-    for (var i = 1; i <= comp.numLayers; i += 1) {
-      if (comp.layer(i).name === name) {
-        return comp.layer(i);
-      }
-    }
-    return null;
   }
 
   var panel = buildPanel(thisObj);

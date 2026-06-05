@@ -61,7 +61,9 @@
     var visibleStart = parseInteger(settings.visibleStart);
     var visibleEnd = parseInteger(settings.visibleEnd);
     var labels = settings.labels || [];
-    var duration = parseNumber(settings.duration);
+    var fitToComp = settings.fitToComp ? true : false;
+    var startFrame = parseNumber(settings.startFrame);
+    var endFrame = parseNumber(settings.endFrame);
     var errors = [];
 
     if (divisions < 1) {
@@ -81,8 +83,13 @@
       errors.push("Label count must match visible non-start points: expected " + expectedLabels + ", got " + labels.length + ".");
     }
 
-    if (duration <= 0) {
-      errors.push("Animation duration must be greater than 0.");
+    if (!fitToComp) {
+      if (startFrame < 0) {
+        errors.push("Start frame must be 0 or greater.");
+      }
+      if (endFrame <= startFrame) {
+        errors.push("End frame must be greater than start frame.");
+      }
     }
 
     return {
@@ -92,7 +99,9 @@
         visibleStart: visibleStart,
         visibleEnd: visibleEnd,
         labels: labels,
-        duration: duration,
+        fitToComp: fitToComp,
+        startFrame: startFrame,
+        endFrame: endFrame,
       },
     };
   }
@@ -254,7 +263,9 @@
     "visibleStart",
     "visibleEnd",
     "labels",
-    "duration",
+    "fitToComp",
+    "startFrame",
+    "endFrame",
     "showFinalLine",
     "lineColor",
     "lineWidth",
@@ -275,7 +286,9 @@
     visibleStart: "4",
     visibleEnd: "6",
     labels: "80 cm, 100 cm, 120 cm",
-    duration: "1.2",
+    fitToComp: true,
+    startFrame: "0",
+    endFrame: "60",
     showFinalLine: true,
     lineColor: "#2563eb",
     lineWidth: "4",
@@ -311,7 +324,7 @@
 
       if (raw === undefined || raw === null) {
         values[key] = PRESET_DEFAULTS[key];
-      } else if (key === "showFinalLine") {
+      } else if (key === "showFinalLine" || key === "fitToComp") {
         values[key] = (raw === true || raw === "true" || raw === 1 || raw === "1");
       } else {
         values[key] = String(raw);

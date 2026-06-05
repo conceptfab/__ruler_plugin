@@ -22,7 +22,7 @@ test("validateSettings accepts six divisions with visible points four through si
     visibleStart: 4,
     visibleEnd: 6,
     labels: ["80 cm", "100 cm", "120 cm"],
-    duration: 1.2,
+    fitToComp: true,
   });
 
   assert.deepEqual(result.errors, []);
@@ -34,7 +34,7 @@ test("validateSettings requires labels only for visible non-start points", () =>
     visibleStart: 0,
     visibleEnd: 2,
     labels: ["80 cm"],
-    duration: 1.2,
+    fitToComp: true,
   });
 
   assert.deepEqual(result.errors, [
@@ -48,7 +48,7 @@ test("validateSettings rejects invalid ranges", () => {
     visibleStart: 7,
     visibleEnd: 4,
     labels: [],
-    duration: 1.2,
+    fitToComp: true,
   });
 
   assert.equal(result.errors.includes("Visible point range must be inside 0...division count."), true);
@@ -88,7 +88,9 @@ test("deserializePreset round-trips every field including quoted labels", () => 
     visibleStart: "2",
     visibleEnd: "8",
     labels: 'a "quoted" label, b',
-    duration: "2",
+    fitToComp: false,
+    startFrame: "0",
+    endFrame: "60",
     showFinalLine: false,
     lineColor: "#112233",
     lineWidth: "5",
@@ -178,5 +180,5 @@ test("deserializePreset reads hand-edited JSON (reordered keys, whitespace, BOM)
   assert.deepEqual(result.errors, []);
   assert.equal(result.values.divisions, "9");
   assert.equal(result.values.labelAlign, "right");
-  assert.equal(result.values.duration, "1.2");
+  assert.equal(result.values.endFrame, "60");
 });
