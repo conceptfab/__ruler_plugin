@@ -49,7 +49,7 @@
     var title = panel.add("statictext", undefined, "Ruler Animator");
     title.graphics.font = ScriptUI.newFont(title.graphics.font.name, "BOLD", 16);
 
-    var subtitle = panel.add("statictext", undefined, "Start line, labeled points, repeatable ruler animation  ·  build 10");
+    var subtitle = panel.add("statictext", undefined, "Start line, labeled points, repeatable ruler animation  ·  build 12");
     subtitle.enabled = false;
 
     var rangeGroup = addSection(panel, "Range");
@@ -755,7 +755,6 @@
     createPointLayer(comp, prefix, settings, 0);
 
     var visible = core.visibleIndices(settings.visibleStart, settings.visibleEnd);
-    var labelSlots = core.labelSlotsForRange(settings.visibleStart, settings.visibleEnd);
     var labelCursor = 0;
 
     for (var i = 0; i < visible.length; i += 1) {
@@ -779,26 +778,17 @@
     addCheckbox(controller, "Fit To Comp", settings.fitToComp);
     addSlider(controller, "Start Frame", settings.startFrame);
     addSlider(controller, "End Frame", settings.endFrame);
+    // Live controls: the generated layers read these from the controller via
+    // expressions, so adjusting the slider updates the rig without rebuilding.
     addSlider(controller, "Line Width", settings.lineWidth);
     addSlider(controller, "Point Size", settings.pointSize);
     addSlider(controller, "Label Offset Y", settings.labelOffsetY);
-    addColor(controller, "Line Color", settings.lineColor);
-    addColor(controller, "Point Fill", settings.pointFill);
-    addColor(controller, "Point Stroke", settings.pointStroke);
-    addColor(controller, "Label Color", settings.labelColor);
-    addCheckbox(controller, "Show Final Line", settings.showFinalLine);
   }
 
   function addSlider(layer, name, value) {
     var effect = layer.property("ADBE Effect Parade").addProperty("ADBE Slider Control");
     effect.name = name;
     effect.property("ADBE Slider Control-0001").setValue(value);
-  }
-
-  function addColor(layer, name, value) {
-    var effect = layer.property("ADBE Effect Parade").addProperty("ADBE Color Control");
-    effect.name = name;
-    effect.property("ADBE Color Control-0001").setValue(value);
   }
 
   function addCheckbox(layer, name, value) {
@@ -823,7 +813,7 @@
 
     var stroke = vectors.addProperty("ADBE Vector Graphic - Stroke");
     stroke.property("ADBE Vector Stroke Color").setValue(settings.lineColor);
-    stroke.property("ADBE Vector Stroke Width").setValue(settings.lineWidth);
+    stroke.property("ADBE Vector Stroke Width").expression = lineWidthExpression(prefix);
     stroke.property("ADBE Vector Stroke Line Cap").setValue(2);
 
     var trim = vectors.addProperty("ADBE Vector Filter - Trim");
@@ -875,7 +865,7 @@
     var vectors = group.property("ADBE Vectors Group");
 
     var ellipse = vectors.addProperty("ADBE Vector Shape - Ellipse");
-    ellipse.property("ADBE Vector Ellipse Size").setValue([settings.pointSize, settings.pointSize]);
+    ellipse.property("ADBE Vector Ellipse Size").expression = pointSizeExpression(prefix);
 
     var fill = vectors.addProperty("ADBE Vector Graphic - Fill");
     fill.property("ADBE Vector Fill Color").setValue(settings.pointFill);
@@ -909,7 +899,7 @@
     doc.justification = settings.labelJustification || ParagraphJustification.CENTER_JUSTIFY;
     source.setValue(doc);
 
-    layer.property("Transform").property("Position").expression = labelPositionExpression(prefix, index, settings.labelOffsetY);
+    layer.property("Transform").property("Position").expression = labelPositionExpression(prefix, index);
     applyLabelOrientation(layer, prefix, settings);
     layer.property("Transform").property("Opacity").expression = pointOpacityExpression(prefix, index);
     return layer;
@@ -944,7 +934,7 @@
       'var ctrl = thisComp.layer("' + prefix + '_Controller");',
       'var s = thisComp.layer("' + prefix + '_Start_NULL").transform.position;',
       'var e = thisComp.layer("' + prefix + '_End_NULL").transform.position;',
-      'var divisions = ctrl.effect("Divisions")("Slider");',
+      'var divisions = Math.max(1, ctrl.effect("Divisions")("Slider"));',
       'var endIndex = ctrl.effect("Visible End")("Slider");',
       "var endPoint = s + (e - s) * (endIndex / divisions);",
       "createPath([[s[0], s[1]], [endPoint[0], endPoint[1]]], [], [], false);",
@@ -975,16 +965,27 @@
       'var ctrl = thisComp.layer("' + prefix + '_Controller");',
       'var s = thisComp.layer("' + prefix + '_Start_NULL").transform.position;',
       'var e = thisComp.layer("' + prefix + '_End_NULL").transform.position;',
-      'var divisions = ctrl.effect("Divisions")("Slider");',
+      'var divisions = Math.max(1, ctrl.effect("Divisions")("Slider"));',
       "var index = " + index + ";",
       "var base = s + (e - s) * (index / divisions);",
     ];
   }
 
-  function labelPositionExpression(prefix, index, offsetY) {
+  function labelPositionExpression(prefix, index) {
     var lines = basePointPositionExpression(prefix, index);
-    lines.push("base + [0, " + offsetY + "];");
+    lines.push('base + [0, ctrl.effect("Label Offset Y")("Slider")];');
     return lines.join("\n");
+  }
+
+  function pointSizeExpression(prefix) {
+    return [
+      'var ps = thisComp.layer("' + prefix + '_Controller").effect("Point Size")("Slider");',
+      "[ps, ps];",
+    ].join("\n");
+  }
+
+  function lineWidthExpression(prefix) {
+    return 'thisComp.layer("' + prefix + '_Controller").effect("Line Width")("Slider");';
   }
 
   function pointOpacityExpression(prefix, index) {
@@ -1023,7 +1024,7 @@
     }
 
     var name = comp.selectedLayers[0].name;
-    var match = /^(Ruler_\d{2})_/.exec(name);
+    var match = /^(Ruler_\d{2,})_/.exec(name);
     return match ? match[1] : null;
   }
 

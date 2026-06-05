@@ -55,23 +55,24 @@ Restart After Effects, then open:
 
 1. Open a composition.
 2. Open the `Ruler Animator` panel.
-3. In `Range`, set `Divisions`, for example `6`.
-4. Set `First label point` and `Last label point`, for example `4` and `6`.
-5. Set `Values`, for example `80 cm, 100 cm, 120 cm`.
-6. Adjust line, point, and label style in `Appearance`.
-   Use `Pick` buttons for colors, choose label font from `Font`, set label anchoring with `Text align`,
-   set label rotation with `Text direction`, and use `-` / `+` controls for widths, sizes, timing, and text offset.
+3. In `Range`, set `Divisions` (e.g. `6`) and `Label points` (e.g. `4` to `6`). Point `0` is the start point — always visible, styled, never labeled.
+4. Set `Values`, e.g. `80 cm, 100 cm, 120 cm` — one label per visible non-start point.
+5. **Timing:** leave `Fit animation to composition` checked to span the whole comp, or uncheck it and set a `Frame range` (start / end frame).
+6. Adjust style in `Appearance`. Click a color **swatch** to open the picker; choose the label `Font`, `Text align` and `Text direction`; use the `▲`/`▼` steppers (or arrow keys in the field) for widths, sizes and offsets.
 7. Keep `Setup guide line` enabled while placing the ruler.
 8. Click `Create Ruler`.
 9. Move `Ruler_01_Start_NULL` and `Ruler_01_End_NULL` to set the final ruler geometry.
 
-The generated line animates from start to end. Each selected point and label appears when the line reaches that point.
+The generated line animates from start to end; each selected point and label appears when the line reaches it.
 
-## Update A Rig
+## Update a rig
 
-Select any generated layer from a ruler, change settings in the panel, then click `Update Selected Rig`.
+- **Change settings:** select any layer of the rig, adjust the panel, then click `Update Selected` — it rebuilds the rig with the new settings while preserving the Start/End null positions.
+- **Change only the timing:** set `Fit animation to composition` / `Frame range`, select a rig layer, then click `Apply timing to selected rig` — it writes the timing straight onto the rig without rebuilding.
 
-The update recreates the selected rig while preserving the current start and end null positions.
+## Presets
+
+`Save Preset` writes all panel settings to a `.json` file; `Load Preset` reads one back into the panel. Saving requires After Effects' *Preferences → Scripting & Expressions → Allow Scripts to Write Files and Access Network* to be enabled.
 
 ## Test
 

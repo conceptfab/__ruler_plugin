@@ -25,6 +25,21 @@ test("Update Selected applies panel settings to the rig and preserves nulls", ()
   assert.match(source, /createRig\(comp, settings, prefix, positions\);/);
 });
 
+test("point size, line width and label offset are driven live from the controller", () => {
+  const source = readPanel();
+
+  // wired live via expressions that read the controller sliders
+  assert.match(source, /ADBE Vector Ellipse Size"\)\.expression = pointSizeExpression\(prefix\)/);
+  assert.match(source, /ADBE Vector Stroke Width"\)\.expression = lineWidthExpression\(prefix\)/);
+  assert.match(source, /base \+ \[0, ctrl\.effect\("Label Offset Y"\)\("Slider"\)\]/);
+  assert.match(source, /effect\("Point Size"\)\("Slider"\)/);
+
+  // the controller no longer carries dead color / show-final-line effects
+  assert.doesNotMatch(source, /addColor\(controller,/);
+  assert.doesNotMatch(source, /addCheckbox\(controller, "Show Final Line"/);
+  assert.doesNotMatch(source, /function addColor\(/);
+});
+
 test("a Range-section button pushes the panel timing onto the selected rig", () => {
   const source = readPanel();
 
