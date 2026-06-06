@@ -80,6 +80,7 @@ test("serializePreset writes the dimension preset type and round-trips every fie
     unit: ' cm "quoted"',
     decimals: "2",
     count: false,
+    animateEndValue: true,
     jumpAt: "75",
     fitToComp: false,
     startFrame: "12",
@@ -103,18 +104,47 @@ test("serializePreset writes the dimension preset type and round-trips every fie
   const parsed = JSON.parse(json);
   const result = core.deserializePreset(json);
 
-  assert.equal(parsed.type, "dimension-animator-preset");
+  assert.equal(parsed.type, "ae-measure-preset");
   assert.equal(parsed.version, 1);
   assert.deepEqual(result.errors, []);
   assert.deepEqual(result.values, values);
 });
 
-test("deserializePreset rejects non-JSON and foreign preset types", () => {
+test("deserializePreset rejects non-JSON and unknown preset types", () => {
   const badJson = core.deserializePreset("this is not json {");
-  const wrongType = core.deserializePreset(JSON.stringify({ type: "ruler-animator-preset", values: {} }));
+  const wrongType = core.deserializePreset(JSON.stringify({ type: "other", values: {} }));
 
   assert.match(badJson.errors[0], /valid JSON/);
-  assert.match(wrongType.errors[0], /Dimension Animator preset/);
+  assert.match(wrongType.errors[0], /compatible measure preset/);
+});
+
+test("deserializePreset accepts a Ruler preset, keeping shared styling and defaulting dimension-only fields", () => {
+  const result = core.deserializePreset(JSON.stringify({
+    type: "ruler-animator-preset",
+    version: 1,
+    values: {
+      // shared styling that should carry over
+      lineColor: "#112233",
+      labelColor: "#aabbcc",
+      pointFill: "#445566",
+      // ruler-only fields that must be dropped
+      divisions: "6",
+      labels: "80 cm, 100 cm",
+      showFinalLine: false,
+    },
+  }));
+
+  assert.deepEqual(result.errors, []);
+  // shared styling carries over
+  assert.equal(result.values.lineColor, "#112233");
+  assert.equal(result.values.labelColor, "#aabbcc");
+  assert.equal(result.values.pointFill, "#445566");
+  // dimension-only fields fall back to dimension defaults
+  assert.equal(result.values.startValue, "64");
+  assert.equal(result.values.unit, " cm");
+  // ruler-only fields are dropped
+  assert.equal(result.values.divisions, undefined);
+  assert.equal(result.values.showFinalLine, undefined);
 });
 
 test("deserializePreset fills defaults and drops unknown keys", () => {

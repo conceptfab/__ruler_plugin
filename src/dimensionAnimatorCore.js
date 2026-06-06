@@ -128,9 +128,17 @@
     ].join("\n");
   }
 
-  var PRESET_TYPE = "dimension-animator-preset";
+  var PRESET_TYPE = "ae-measure-preset";
   var PRESET_VERSION = 1;
-  var BOOLEAN_KEYS = { fitToComp: true, count: true };
+  // Presets are shared between Ruler and Dimension Animator: each plugin keeps
+  // only the keys it knows and defaults the rest. Accept the shared type plus
+  // both legacy per-plugin types for backward compatibility.
+  var ACCEPTED_TYPES = {
+    "ae-measure-preset": true,
+    "ruler-animator-preset": true,
+    "dimension-animator-preset": true,
+  };
+  var BOOLEAN_KEYS = { fitToComp: true, count: true, animateEndValue: true };
 
   var PRESET_KEYS = [
     "startValue",
@@ -138,6 +146,7 @@
     "unit",
     "decimals",
     "count",
+    "animateEndValue",
     "jumpAt",
     "fitToComp",
     "startFrame",
@@ -163,6 +172,7 @@
     unit: " cm",
     decimals: "0",
     count: true,
+    animateEndValue: true,
     jumpAt: "50",
     fitToComp: true,
     startFrame: "0",
@@ -363,8 +373,8 @@
       return { values: clonePresetDefaults(), errors: ["File is not valid JSON."], warnings: warnings };
     }
 
-    if (!parsed || typeof parsed !== "object" || parsed.type !== PRESET_TYPE) {
-      return { values: clonePresetDefaults(), errors: ["File is not a Dimension Animator preset."], warnings: warnings };
+    if (!parsed || typeof parsed !== "object" || !ACCEPTED_TYPES[parsed.type]) {
+      return { values: clonePresetDefaults(), errors: ["File is not a compatible measure preset."], warnings: warnings };
     }
 
     if (parsed.version && parsed.version > PRESET_VERSION) {

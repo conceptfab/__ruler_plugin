@@ -74,7 +74,7 @@ test("serializePreset writes a typed, versioned snapshot and fills missing field
   const json = core.serializePreset({ divisions: "6", labels: 'a "quoted" label' });
   const parsed = JSON.parse(json);
 
-  assert.equal(parsed.type, "ruler-animator-preset");
+  assert.equal(parsed.type, "ae-measure-preset");
   assert.equal(parsed.version, 1);
   assert.equal(parsed.values.divisions, "6");
   assert.equal(parsed.values.labels, 'a "quoted" label');
@@ -120,11 +120,40 @@ test("deserializePreset rejects non-JSON without throwing", () => {
   assert.match(result.errors[0], /valid JSON/);
 });
 
-test("deserializePreset rejects JSON that is not a ruler preset", () => {
+test("deserializePreset rejects JSON with an unknown preset type", () => {
   const result = core.deserializePreset(JSON.stringify({ type: "other", values: {} }));
 
   assert.equal(result.errors.length, 1);
-  assert.match(result.errors[0], /Ruler Animator preset/);
+  assert.match(result.errors[0], /compatible measure preset/);
+});
+
+test("deserializePreset accepts a Dimension preset, keeping shared styling and defaulting ruler-only fields", () => {
+  const result = core.deserializePreset(JSON.stringify({
+    type: "dimension-animator-preset",
+    version: 1,
+    values: {
+      // shared styling that should carry over
+      lineColor: "#112233",
+      labelColor: "#aabbcc",
+      pointFill: "#445566",
+      // dimension-only fields that must be dropped
+      startValue: "64",
+      unit: " cm",
+      count: false,
+    },
+  }));
+
+  assert.deepEqual(result.errors, []);
+  // shared styling carries over
+  assert.equal(result.values.lineColor, "#112233");
+  assert.equal(result.values.labelColor, "#aabbcc");
+  assert.equal(result.values.pointFill, "#445566");
+  // ruler-only fields fall back to ruler defaults
+  assert.equal(result.values.divisions, "6");
+  assert.equal(result.values.showFinalLine, true);
+  // dimension-only fields are dropped
+  assert.equal(result.values.startValue, undefined);
+  assert.equal(result.values.unit, undefined);
 });
 
 test("deserializePreset fills defaults for missing fields and drops unknown keys", () => {
@@ -160,7 +189,7 @@ test("serializePreset output parses with both the native and built-in parser", (
 
   // Output is standard JSON the native engine accepts...
   const native = JSON.parse(json);
-  assert.equal(native.type, "ruler-animator-preset");
+  assert.equal(native.type, "ae-measure-preset");
   assert.equal(native.values.labels, 'x "y" z');
   assert.equal(native.values.showFinalLine, false);
 
