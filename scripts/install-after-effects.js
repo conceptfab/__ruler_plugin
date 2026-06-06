@@ -7,6 +7,8 @@ const PANEL_FILES = [
   "rulerAnimatorCore.js",
   "DimensionAnimator.jsx",
   "dimensionAnimatorCore.js",
+  "DimensionLine.jsx",
+  "dimensionLineCore.js",
 ];
 
 function defaultScriptUiPanelsDirectory(platform, version) {

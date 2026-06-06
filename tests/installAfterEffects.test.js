@@ -14,6 +14,8 @@ test("install script copies all panel source files", () => {
     "rulerAnimatorCore.js",
     "DimensionAnimator.jsx",
     "dimensionAnimatorCore.js",
+    "DimensionLine.jsx",
+    "dimensionLineCore.js",
   ]);
 });
 
