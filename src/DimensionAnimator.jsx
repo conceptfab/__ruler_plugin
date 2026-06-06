@@ -63,6 +63,13 @@
     var countInput = countRow.add("checkbox", undefined, "Count up");
     countInput.value = true;
 
+    var animateEndRow = valuesGroup.add("group");
+    animateEndRow.orientation = "row";
+    animateEndRow.alignChildren = ["left", "center"];
+    animateEndRow.spacing = 6;
+    var animateEndValueInput = animateEndRow.add("checkbox", undefined, "Animate end value");
+    animateEndValueInput.value = true;
+
     var jumpAtInput = addStepperEdit(valuesGroup, "Jump at (%)", "50", 0, 100, 1);
     function syncJumpEnabled() {
       jumpAtInput.enabled = !countInput.value;
@@ -221,6 +228,7 @@
         unit: unitInput.text,
         decimals: parseInt(decimalsInput.text, 10),
         count: countInput.value,
+        animateEndValue: animateEndValueInput.value,
         jumpAt: parseFloat(jumpAtInput.text),
         fitToComp: fitToCompInput.value,
         startFrame: parseFloat(startFrameInput.text),
@@ -248,6 +256,7 @@
         unit: unitInput.text,
         decimals: decimalsInput.text,
         count: countInput.value,
+        animateEndValue: animateEndValueInput.value,
         jumpAt: jumpAtInput.text,
         fitToComp: fitToCompInput.value,
         startFrame: startFrameInput.text,
@@ -274,6 +283,7 @@
       unitInput.text = values.unit;
       decimalsInput.text = values.decimals;
       countInput.value = values.count;
+      animateEndValueInput.value = values.animateEndValue;
       jumpAtInput.text = values.jumpAt;
       fitToCompInput.value = values.fitToComp;
       startFrameInput.text = values.startFrame;
@@ -359,6 +369,7 @@
     addSlider(controller, "Decimals", settings.decimals);
     addSlider(controller, "Jump At", settings.jumpAt);
     addCheckbox(controller, "Count", settings.count);
+    addCheckbox(controller, "Animate End Value", settings.animateEndValue);
     addCheckbox(controller, "Fit To Comp", settings.fitToComp);
     addSlider(controller, "Start Frame", settings.startFrame);
     addSlider(controller, "End Frame", settings.endFrame);
@@ -453,8 +464,8 @@
     var stroke = vectors.addProperty("ADBE Vector Graphic - Stroke");
     stroke.property("ADBE Vector Stroke Color").setValue(settings.pointStroke);
     stroke.property("ADBE Vector Stroke Width").setValue(settings.pointStrokeWidth);
-    layer.property("Transform").property("Position").expression = endPositionExpression(prefix);
-    layer.property("Transform").property("Opacity").expression = endRevealOpacityExpression(prefix);
+    layer.property("Transform").property("Position").expression = liveEndPositionExpression(prefix);
+    layer.property("Transform").property("Opacity").expression = movingEndOpacityExpression(prefix);
     return layer;
   }
 
@@ -479,8 +490,8 @@
     var source = layer.property("Source Text");
     applyTextDocumentStyle(source, settings);
 
-    layer.property("Transform").property("Position").expression = endLabelPositionExpression(prefix);
-    layer.property("Transform").property("Opacity").expression = endRevealOpacityExpression(prefix);
+    layer.property("Transform").property("Position").expression = endValueLabelPositionExpression(prefix);
+    layer.property("Transform").property("Opacity").expression = endValueLabelOpacityExpression(prefix);
     applyLabelOrientation(layer, prefix, settings);
     return layer;
   }
@@ -557,6 +568,15 @@
     return 'thisComp.layer("' + prefix + '_End").transform.position;';
   }
 
+  function liveEndPositionExpression(prefix) {
+    return [
+      'var s = thisComp.layer("' + prefix + '_Value").transform.position;',
+      'var e = thisComp.layer("' + prefix + '_End").transform.position;',
+      endRevealProgressExpression(prefix),
+      's + (e - s) * progress;',
+    ].join("\n");
+  }
+
   function endPositionConstraintExpression(prefix) {
     return [
       'var b = thisComp.layer("' + prefix + '_Base").transform.position;',
@@ -589,18 +609,31 @@
     ].join("\n");
   }
 
-  function endLabelPositionExpression(prefix) {
+  function endValueLabelPositionExpression(prefix) {
     return [
       'var ctrl = thisComp.layer("' + prefix + '_Controller");',
+      'var animateEndValue = ctrl.effect("Animate End Value")("Checkbox");',
+      'var s = thisComp.layer("' + prefix + '_Value").transform.position;',
       'var e = thisComp.layer("' + prefix + '_End").transform.position;',
-      'e + [ctrl.effect("Label Offset X")("Slider"), ctrl.effect("Label Offset Y")("Slider")];',
+      endRevealProgressExpression(prefix),
+      'var p = animateEndValue > 0.5 ? s + (e - s) * progress : e;',
+      'p + [ctrl.effect("Label Offset X")("Slider"), ctrl.effect("Label Offset Y")("Slider")];',
     ].join("\n");
   }
 
-  function endRevealOpacityExpression(prefix) {
+  function movingEndOpacityExpression(prefix) {
     return [
       endRevealProgressExpression(prefix),
-      'progress >= 1 ? 100 : 0;',
+      'progress > 0 ? 100 : 0;',
+    ].join("\n");
+  }
+
+  function endValueLabelOpacityExpression(prefix) {
+    return [
+      'var ctrl = thisComp.layer("' + prefix + '_Controller");',
+      'var animateEndValue = ctrl.effect("Animate End Value")("Checkbox");',
+      endRevealProgressExpression(prefix),
+      'animateEndValue > 0.5 ? (progress > 0 ? 100 : 0) : (progress >= 1 ? 100 : 0);',
     ].join("\n");
   }
 
@@ -806,29 +839,53 @@
 
   function collectFontChoices() {
     var choices = [{ label: "Default", postScriptName: "" }];
+
     try {
-      var fonts = app.fonts && app.fonts.allFonts ? app.fonts.allFonts : [];
-      for (var i = 0; i < fonts.length; i += 1) {
-        addFontChoice(choices, fonts[i]);
+      if (app.fonts && app.fonts.allFonts) {
+        var allFonts = app.fonts.allFonts;
+        for (var i = 0; i < allFonts.length; i += 1) {
+          var entry = allFonts[i];
+          if (entry && entry.length) {
+            for (var j = 0; j < entry.length; j += 1) {
+              addFontChoice(choices, entry[j]);
+            }
+          } else {
+            addFontChoice(choices, entry);
+          }
+        }
       }
     } catch (ignored) {}
+
+    if (choices.length === 1) {
+      choices.push({ label: "Arial", postScriptName: "ArialMT" });
+      choices.push({ label: "Helvetica", postScriptName: "Helvetica" });
+      choices.push({ label: "Avenir Next", postScriptName: "AvenirNext-Regular" });
+    }
+
     return choices;
   }
 
   function addFontChoice(choices, font) {
-    var postScriptName = font.postScriptName || font.name || "";
+    if (!font) {
+      return;
+    }
+
+    var postScriptName = font.postScriptName || font.fullName || font.name;
     if (!postScriptName) {
       return;
     }
+
     var label = font.fullName || font.familyName || postScriptName;
     if (font.styleName && label.indexOf(font.styleName) < 0) {
       label += " " + font.styleName;
     }
+
     for (var i = 0; i < choices.length; i += 1) {
       if (choices[i].postScriptName === postScriptName) {
         return;
       }
     }
+
     choices.push({ label: label, postScriptName: postScriptName });
   }
 
