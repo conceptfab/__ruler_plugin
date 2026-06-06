@@ -103,6 +103,7 @@ test("deserializePreset round-trips every field including quoted labels", () => 
     labelOrientation: "vertical",
     labelColor: "#aabbcc",
     labelFontSize: "40",
+    labelOffsetX: "12",
     labelOffsetY: "-60",
   };
 

@@ -49,7 +49,7 @@
     var title = panel.add("statictext", undefined, "Ruler Animator");
     title.graphics.font = ScriptUI.newFont(title.graphics.font.name, "BOLD", 16);
 
-    var subtitle = panel.add("statictext", undefined, "Start line, labeled points, repeatable ruler animation  ·  build 17");
+    var subtitle = panel.add("statictext", undefined, "Start line, labeled points, repeatable ruler animation  ·  build 18");
     subtitle.enabled = false;
 
     var rangeGroup = addSection(panel, "Range");
@@ -165,6 +165,7 @@
     var labelOrientationInput = addTextOrientationControl(textColumn, "Text direction");
     var labelColorInput = addColorControl(textColumn, "Text color", "#92400e");
     var labelFontSizeInput = addStepperEdit(textColumn, "Text size", "36", 8, 120, 1);
+    var labelOffsetXInput = addStepperEdit(textColumn, "Text X offset", "0", -160, 160, 2);
     var labelOffsetInput = addStepperEdit(textColumn, "Text Y offset", "-52", -160, 160, 2);
 
     var actions = panel.add("group");
@@ -259,6 +260,7 @@
         labelOrientation: selectedTextOrientation(labelOrientationInput),
         labelColor: core.parseHexColor(labelColorInput.text),
         labelFontSize: parseFloat(labelFontSizeInput.text),
+        labelOffsetX: parseFloat(labelOffsetXInput.text),
         labelOffsetY: parseFloat(labelOffsetInput.text),
         fitToComp: fitToCompInput.value,
         startFrame: parseFloat(startFrameInput.text),
@@ -288,6 +290,7 @@
         labelOrientation: selectedTextOrientation(labelOrientationInput),
         labelColor: labelColorInput.text,
         labelFontSize: labelFontSizeInput.text,
+        labelOffsetX: labelOffsetXInput.text,
         labelOffsetY: labelOffsetInput.text,
       };
     }
@@ -310,6 +313,7 @@
       pointStrokeWidthInput.text = values.pointStrokeWidth;
       labelColorInput.text = values.labelColor;
       labelFontSizeInput.text = values.labelFontSize;
+      labelOffsetXInput.text = values.labelOffsetX;
       labelOffsetInput.text = values.labelOffsetY;
       selectDropdownByProperty(labelFontInput, "postScriptName", values.labelFont);
       selectDropdownByProperty(labelAlignInput, "justificationName", values.labelAlign);
@@ -778,6 +782,7 @@
     // expressions, so adjusting the slider updates the rig without rebuilding.
     addSlider(controller, "Line Width", settings.lineWidth);
     addSlider(controller, "Point Size", settings.pointSize);
+    addSlider(controller, "Label Offset X", settings.labelOffsetX);
     addSlider(controller, "Label Offset Y", settings.labelOffsetY);
   }
 
@@ -970,7 +975,7 @@
 
   function labelPositionExpression(prefix, index) {
     var lines = basePointPositionExpression(prefix, index);
-    lines.push('base + [0, ctrl.effect("Label Offset Y")("Slider")];');
+    lines.push('base + [ctrl.effect("Label Offset X")("Slider"), ctrl.effect("Label Offset Y")("Slider")];');
     return lines.join("\n");
   }
 

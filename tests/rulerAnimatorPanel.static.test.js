@@ -31,7 +31,7 @@ test("point size, line width and label offset are driven live from the controlle
   // wired live via expressions that read the controller sliders
   assert.match(source, /ADBE Vector Ellipse Size"\)\.expression = pointSizeExpression\(prefix\)/);
   assert.match(source, /ADBE Vector Stroke Width"\)\.expression = lineWidthExpression\(prefix\)/);
-  assert.match(source, /base \+ \[0, ctrl\.effect\("Label Offset Y"\)\("Slider"\)\]/);
+  assert.match(source, /base \+ \[ctrl\.effect\("Label Offset X"\)\("Slider"\), ctrl\.effect\("Label Offset Y"\)\("Slider"\)\]/);
   assert.match(source, /effect\("Point Size"\)\("Slider"\)/);
 
   // the controller no longer carries dead color / show-final-line effects

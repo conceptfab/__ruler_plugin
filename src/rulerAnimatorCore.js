@@ -169,6 +169,7 @@
     "labelOrientation",
     "labelColor",
     "labelFontSize",
+    "labelOffsetX",
     "labelOffsetY",
   ];
 
@@ -192,6 +193,7 @@
     labelOrientation: "horizontal",
     labelColor: "#92400e",
     labelFontSize: "36",
+    labelOffsetX: "0",
     labelOffsetY: "-52",
   };
 
