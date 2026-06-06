@@ -5,11 +5,13 @@ const PROJECT_ROOT = path.resolve(__dirname, "..");
 const PANEL_FILES = [
   "RulerAnimator.jsx",
   "rulerAnimatorCore.js",
+  "DimensionAnimator.jsx",
+  "dimensionAnimatorCore.js",
 ];
 
 function defaultScriptUiPanelsDirectory(platform, version) {
   if (platform === "darwin") {
-    return path.join(
+    return path.posix.join(
       "/Applications",
       `Adobe After Effects ${version}`,
       "Scripts",
@@ -65,7 +67,7 @@ function installPanel(options = {}) {
     console.log(`Copied ${fileName} -> ${destinationPath}`);
   }
 
-  console.log(`Installed Ruler Animator panel to: ${destinationDirectory}`);
+  console.log(`Installed After Effects animator panels to: ${destinationDirectory}`);
   return destinationDirectory;
 }
 

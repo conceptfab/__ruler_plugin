@@ -8,10 +8,12 @@ const {
   installDirectory,
 } = require("../scripts/install-after-effects");
 
-test("install script copies both panel source files", () => {
+test("install script copies all panel source files", () => {
   assert.deepEqual(PANEL_FILES, [
     "RulerAnimator.jsx",
     "rulerAnimatorCore.js",
+    "DimensionAnimator.jsx",
+    "dimensionAnimatorCore.js",
   ]);
 });
 
