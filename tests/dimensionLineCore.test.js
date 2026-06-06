@@ -28,7 +28,7 @@ test("buildLabelExpression reads live sliders and bakes the unit literal", () =>
   assert.match(expression, /thisComp\.layer\("DimLine_01_Controller"\)/);
   assert.match(expression, /ctrl\.effect\("Value"\)\("Slider"\)/);
   assert.match(expression, /Math\.max\(0, Math\.min\(3, Math\.round\(ctrl\.effect\("Decimals"\)\("Slider"\)\)\)\)/);
-  assert.match(expression, /v\.toFixed\(dec\) \+ " cm";/);
+  assert.match(expression, /Number\(v\)\.toFixed\(dec\) \+ " cm";/);
 });
 
 test("serializePreset writes the shared type and round-trips every field", () => {

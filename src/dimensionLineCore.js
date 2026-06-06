@@ -97,7 +97,9 @@
       'var ctrl = thisComp.layer("' + prefix + '_Controller");',
       'var v = ctrl.effect("Value")("Slider");',
       'var dec = Math.max(0, Math.min(3, Math.round(ctrl.effect("Decimals")("Slider"))));',
-      'v.toFixed(dec) + ' + jsonEscape(unit) + ';',
+      // Coerce to a real Number: the JS expression engine returns a property
+      // object from effect(...)("Slider"), which has no toFixed method.
+      'Number(v).toFixed(dec) + ' + jsonEscape(unit) + ';',
     ].join("\n");
   }
 
