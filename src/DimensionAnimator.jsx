@@ -646,7 +646,7 @@
       '} else {',
       '  v = ev;',
       '}',
-      'v.toFixed(dec) + ' + expressionStringLiteral(unit) + ';',
+      'Number(v).toFixed(dec) + ' + expressionStringLiteral(unit) + ';',
     ].join("\n");
   }
 

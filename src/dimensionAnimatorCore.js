@@ -111,7 +111,7 @@
       '  var jump = t0 + (t1 - t0) * jumpAt / 100;',
       '  v = time < jump ? sv : ev;',
       '}',
-      'v.toFixed(dec) + ' + jsonEscape(unit) + ';',
+      'Number(v).toFixed(dec) + ' + jsonEscape(unit) + ';',
     ].join("\n");
   }
 
@@ -124,7 +124,7 @@
       'var ctrl = thisComp.layer("' + prefix + '_Controller");',
       'var v = ctrl.effect("' + effectName + '")("Slider");',
       'var dec = Math.max(0, Math.min(3, Math.round(ctrl.effect("Decimals")("Slider"))));',
-      'v.toFixed(dec) + ' + jsonEscape(unit) + ';',
+      'Number(v).toFixed(dec) + ' + jsonEscape(unit) + ';',
     ].join("\n");
   }
 

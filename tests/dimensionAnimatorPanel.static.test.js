@@ -199,7 +199,7 @@ test("end value can animate together with the moving endpoint", () => {
   assert.match(source, /v = linear\(time, t0, t1, sv, ev\);/);
   assert.match(source, /v = time < jump \? sv : ev;/);
   assert.match(source, /v = ev;/);
-  assert.match(source, /v\.toFixed\(dec\) \+ /);
+  assert.match(source, /Number\(v\)\.toFixed\(dec\) \+ /);
   assert.match(source, /animateEndValue > 0\.5 \? \(progress > 0 \? 100 : 0\) : \(progress >= 1 \? 100 : 0\);/);
   assert.match(source, /createEndLabelLayer[\s\S]*Position"\)\.expression = endValueLabelPositionExpression\(prefix\)/);
   assert.match(source, /createEndLabelLayer[\s\S]*Opacity"\)\.expression = endValueLabelOpacityExpression\(prefix\)/);

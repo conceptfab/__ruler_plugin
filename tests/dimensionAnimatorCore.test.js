@@ -208,5 +208,5 @@ test("buildStaticValueExpression reads the requested value effect", () => {
 
   assert.match(expression, /effect\("End Value"\)\("Slider"\)/);
   assert.match(expression, /effect\("Decimals"\)\("Slider"\)/);
-  assert.match(expression, /v\.toFixed\(dec\) \+ " cm"/);
+  assert.match(expression, /Number\(v\)\.toFixed\(dec\) \+ " cm"/);
 });
