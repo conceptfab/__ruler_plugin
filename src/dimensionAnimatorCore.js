@@ -79,7 +79,10 @@
         out += "\\r";
       } else if (ch === "\t") {
         out += "\\t";
-      } else if (code < 32) {
+      } else if (code < 32 || code === 8232 || code === 8233) {
+        // Escape control chars plus U+2028/U+2029: harmless in JSON, but in
+        // After Effects' ES3-era expression engine these are line terminators
+        // that would break a string literal (potential expression injection).
         var hex = code.toString(16);
         out += "\\u" + "0000".substring(hex.length) + hex;
       } else {

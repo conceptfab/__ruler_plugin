@@ -3,16 +3,24 @@ const assert = require("node:assert/strict");
 
 const core = require("../src/dimensionAnimatorCore");
 
+// Mimic an After Effects property object: arithmetic works through valueOf, but
+// there is no toFixed method — so the generated expression MUST coerce with
+// Number(...) before calling toFixed. This guards the slider-coercion bug class
+// fixed in 160993a/f7a8c08; dropping Number() makes the Count-off path throw.
+function aeProperty(value) {
+  return { valueOf: function () { return value; } };
+}
+
 function evaluateValueExpression(expression, options) {
   const effects = {
-    "Start Value": options.startValue,
-    "End Value": options.endValue,
-    Decimals: options.decimals,
-    "Jump At": options.jumpAt,
-    Count: options.count ? 1 : 0,
-    "Fit To Comp": options.fitToComp ? 1 : 0,
-    "Start Frame": options.startFrame,
-    "End Frame": options.endFrame,
+    "Start Value": aeProperty(options.startValue),
+    "End Value": aeProperty(options.endValue),
+    Decimals: aeProperty(options.decimals),
+    "Jump At": aeProperty(options.jumpAt),
+    Count: aeProperty(options.count ? 1 : 0),
+    "Fit To Comp": aeProperty(options.fitToComp ? 1 : 0),
+    "Start Frame": aeProperty(options.startFrame),
+    "End Frame": aeProperty(options.endFrame),
   };
 
   const thisComp = {
@@ -209,4 +217,12 @@ test("buildStaticValueExpression reads the requested value effect", () => {
   assert.match(expression, /effect\("End Value"\)\("Slider"\)/);
   assert.match(expression, /effect\("Decimals"\)\("Slider"\)/);
   assert.match(expression, /Number\(v\)\.toFixed\(dec\) \+ " cm"/);
+});
+
+test("buildValueExpression escapes line separators in the unit (no expression break)", () => {
+  const expression = core.buildValueExpression({ prefix: "Dim_01", unit: "\u2028\nX" });
+
+  assert.match(expression, /\\u2028/);
+  assert.match(expression, /\\n/);
+  assert.doesNotThrow(() => new Function(expression));
 });

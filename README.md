@@ -8,9 +8,17 @@ Dockable ScriptUI panel for Adobe After Effects. It creates an animated ruler be
 - point and label reveal when the animated line reaches their division,
 - optional final guide line for precise positioning.
 
+This repository ships three companion ScriptUI panels that share one styling /
+preset system (a preset saved from one panel carries its base-element styling
+into the others):
+
+- **Ruler Animator** (`RulerAnimator.jsx`) — the animated ruler described above.
+- **Dimension Animator** (`DimensionAnimator.jsx`) — an animated dimension whose value counts up.
+- **Dimension Line** (`DimensionLine.jsx`) — a static dimension line with a fixed, manually-entered value.
+
 ## Install
 
-Run the installer script to copy both files from `src/` into After Effects `Scripts/ScriptUI Panels`:
+Run the installer script to copy all panel files from `src/` into After Effects `Scripts/ScriptUI Panels`:
 
 ```bash
 npm run install:ae
@@ -30,26 +38,38 @@ Use a custom ScriptUI Panels folder:
 AE_SCRIPTUI_PANELS="/path/to/ScriptUI Panels" npm run install:ae
 ```
 
-The script copies:
+The script copies all three panels and their cores:
 
-- `src/RulerAnimator.jsx`
-- `src/rulerAnimatorCore.js`
+- `src/RulerAnimator.jsx` + `src/rulerAnimatorCore.js`
+- `src/DimensionAnimator.jsx` + `src/dimensionAnimatorCore.js`
+- `src/DimensionLine.jsx` + `src/dimensionLineCore.js`
+
+Each `.jsx` panel loads its matching `*Core.js` from the same folder, so always
+copy them together.
 
 Manual macOS copy:
 
 ```bash
-cp src/RulerAnimator.jsx src/rulerAnimatorCore.js "/Applications/Adobe After Effects 2026/Scripts/ScriptUI Panels/"
+cp src/RulerAnimator.jsx src/rulerAnimatorCore.js \
+   src/DimensionAnimator.jsx src/dimensionAnimatorCore.js \
+   src/DimensionLine.jsx src/dimensionLineCore.js \
+   "/Applications/Adobe After Effects 2026/Scripts/ScriptUI Panels/"
 ```
 
 Manual Windows copy:
 
 ```powershell
-Copy-Item src\RulerAnimator.jsx, src\rulerAnimatorCore.js "C:\Program Files\Adobe\Adobe After Effects 2026\Support Files\Scripts\ScriptUI Panels\"
+Copy-Item src\RulerAnimator.jsx, src\rulerAnimatorCore.js, `
+          src\DimensionAnimator.jsx, src\dimensionAnimatorCore.js, `
+          src\DimensionLine.jsx, src\dimensionLineCore.js `
+          "C:\Program Files\Adobe\Adobe After Effects 2026\Support Files\Scripts\ScriptUI Panels\"
 ```
 
-Restart After Effects, then open:
+Restart After Effects, then open any of:
 
-`Window > Ruler Animator.jsx`
+- `Window > Ruler Animator.jsx`
+- `Window > Dimension Animator.jsx`
+- `Window > Dimension Line.jsx`
 
 ## Use
 

@@ -5,6 +5,19 @@ import sys
 # Get the directory of the current script
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
+
+# Keep this list in sync with PANEL_FILES in install-after-effects.js.
+# tests/installAfterEffects.test.js asserts the two installers agree.
+PANEL_FILES = [
+    "RulerAnimator.jsx",
+    "rulerAnimatorCore.js",
+    "DimensionAnimator.jsx",
+    "dimensionAnimatorCore.js",
+    "DimensionLine.jsx",
+    "dimensionLineCore.js",
+]
+
+
 def get_install_directory():
     # 1. Check if overridden by environment variable
     env_dir = os.environ.get("AE_SCRIPTUI_PANELS")
@@ -52,29 +65,24 @@ def install():
         print(f"Error creating destination directory: {e}", file=sys.stderr)
         sys.exit(1)
         
-    try:
-        items = os.listdir(src_dir)
-    except Exception as e:
-        print(f"Error listing source directory: {e}", file=sys.stderr)
-        sys.exit(1)
-        
-    for item_name in items:
-        src_path = os.path.join(src_dir, item_name)
-        dest_path = os.path.join(dest_dir, item_name)
-        
-        try:
-            if os.path.isdir(src_path):
-                if os.path.exists(dest_path):
-                    shutil.rmtree(dest_path)
-                shutil.copytree(src_path, dest_path)
-                print(f"Copied directory {item_name} -> {dest_path}")
-            else:
-                shutil.copy2(src_path, dest_path)
-                print(f"Copied file {item_name} -> {dest_path}")
-        except Exception as e:
-            print(f"Error copying {item_name}: {e}", file=sys.stderr)
+    # Copy only the known panel files (mirrors the JS installer's allowlist).
+    # Avoid os.listdir + copytree/rmtree: that shipped stray files and could
+    # recursively delete a destination folder on a name collision.
+    for file_name in PANEL_FILES:
+        src_path = os.path.join(src_dir, file_name)
+        dest_path = os.path.join(dest_dir, file_name)
+
+        if not os.path.exists(src_path):
+            print(f"Error: Missing source file: {src_path}", file=sys.stderr)
             sys.exit(1)
-            
+
+        try:
+            shutil.copy2(src_path, dest_path)
+            print(f"Copied {file_name} -> {dest_path}")
+        except Exception as e:
+            print(f"Error copying {file_name}: {e}", file=sys.stderr)
+            sys.exit(1)
+
     print("Installation completed successfully!")
 
 if __name__ == "__main__":

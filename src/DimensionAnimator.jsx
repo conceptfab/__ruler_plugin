@@ -682,7 +682,33 @@
   }
 
   function expressionStringLiteral(value) {
-    return '"' + String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
+    // Mirror dimensionAnimatorCore.jsonEscape: escape quotes, backslashes,
+    // control chars, and the U+2028/U+2029 line terminators. A raw newline (or
+    // a unit pasted with one) would otherwise produce a broken/injectable
+    // expression string in After Effects' ES3-era expression engine.
+    var input = String(value || "");
+    var out = "";
+    for (var i = 0; i < input.length; i += 1) {
+      var ch = input.charAt(i);
+      var code = input.charCodeAt(i);
+      if (ch === "\"") {
+        out += "\\\"";
+      } else if (ch === "\\") {
+        out += "\\\\";
+      } else if (ch === "\n") {
+        out += "\\n";
+      } else if (ch === "\r") {
+        out += "\\r";
+      } else if (ch === "\t") {
+        out += "\\t";
+      } else if (code < 32 || code === 8232 || code === 8233) {
+        var hex = code.toString(16);
+        out += "\\u" + "0000".substring(hex.length) + hex;
+      } else {
+        out += ch;
+      }
+    }
+    return "\"" + out + "\"";
   }
 
   function applyLabelOrientation(layer, prefix, settings) {
@@ -1065,8 +1091,10 @@
   }
 
   function formatNumber(value) {
-    var rounded = Math.round(value * 10) / 10;
-    if (Math.abs(rounded - Math.round(rounded)) < 0.001) {
+    // Keep up to 3 decimal places so value fields can match the Decimals
+    // control (0-3). Integers still render without a trailing ".0".
+    var rounded = Math.round(value * 1000) / 1000;
+    if (Math.abs(rounded - Math.round(rounded)) < 0.0005) {
       return String(Math.round(rounded));
     }
     return String(rounded);

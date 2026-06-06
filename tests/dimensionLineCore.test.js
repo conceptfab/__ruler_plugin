@@ -2,6 +2,37 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 
 const core = require("../src/dimensionLineCore");
+const rulerCore = require("../src/rulerAnimatorCore");
+const dimensionCore = require("../src/dimensionAnimatorCore");
+
+// Mimic an After Effects property object: arithmetic works through valueOf, but
+// there is no toFixed method — so the label expression MUST coerce with
+// Number(...) before calling toFixed. A regression that drops Number() throws.
+function aeProperty(value) {
+  return { valueOf: function () { return value; } };
+}
+
+function evaluateLabelExpression(expression, options) {
+  const effects = {
+    Value: aeProperty(options.value),
+    Decimals: aeProperty(options.decimals),
+  };
+  const thisComp = {
+    layer(name) {
+      assert.equal(name, "DimLine_01_Controller");
+      return {
+        effect(effectName) {
+          return function property(propertyName) {
+            assert.equal(propertyName, "Slider");
+            return effects[effectName];
+          };
+        },
+      };
+    },
+  };
+
+  return Function("thisComp", `return eval(${JSON.stringify(expression)});`)(thisComp);
+}
 
 test("nextPrefix increments the highest existing DimLine index", () => {
   assert.equal(core.nextPrefix([], "DimLine"), "DimLine_01");
@@ -167,4 +198,57 @@ test("validateSettings reports out-of-range decimals and normalizes settings", (
 test("serializePreset never returns empty (guards against blank save files)", () => {
   assert.ok(core.serializePreset({}).length > 0);
   assert.ok(core.serializePreset(undefined).length > 0);
+});
+
+test("buildLabelExpression renders value with decimals and unit, coercing the slider", () => {
+  const expression = core.buildLabelExpression({ prefix: "DimLine_01", unit: " cm" });
+
+  assert.equal(evaluateLabelExpression(expression, { value: 123.456, decimals: 2 }), "123.46 cm");
+  assert.equal(evaluateLabelExpression(expression, { value: 100, decimals: 0 }), "100 cm");
+  // Decimals clamp to 3 even if the slider is dragged past it.
+  assert.equal(evaluateLabelExpression(expression, { value: 1.23456, decimals: 9 }), "1.235 cm");
+});
+
+test("buildLabelExpression escapes line separators in the unit (no expression break)", () => {
+  const expression = core.buildLabelExpression({ unit: "\u2028\nX" });
+
+  assert.match(expression, /\\u2028/);
+  assert.match(expression, /\\n/);
+  assert.doesNotThrow(() => new Function(expression));
+});
+
+test("validateSettings accepts the 0 and 3 decimals boundaries and rejects negatives", () => {
+  assert.deepEqual(core.validateSettings({ value: "1", decimals: "0" }).errors, []);
+  assert.deepEqual(core.validateSettings({ value: "1", decimals: "3" }).errors, []);
+
+  const low = core.validateSettings({ value: "1", decimals: "-1" });
+  assert.equal(low.errors.length, 1);
+  assert.match(low.errors[0], /0 or greater/);
+});
+
+test("a Dimension Line preset loads into Ruler and Dimension, carrying shared styling", () => {
+  const json = core.serializePreset({
+    value: "250",
+    unit: " mm",
+    decimals: "2",
+    lineColor: "#123456",
+    labelColor: "#654321",
+    pointFill: "#abcdef",
+    labelFontSize: "44",
+  });
+
+  const intoRuler = rulerCore.deserializePreset(json);
+  assert.deepEqual(intoRuler.errors, []);
+  assert.equal(intoRuler.values.lineColor, "#123456");
+  assert.equal(intoRuler.values.labelColor, "#654321");
+  assert.equal(intoRuler.values.pointFill, "#abcdef");
+  assert.equal(intoRuler.values.labelFontSize, "44");
+  assert.equal(intoRuler.values.value, undefined); // Dimension Line-only content key is dropped
+
+  const intoDimension = dimensionCore.deserializePreset(json);
+  assert.deepEqual(intoDimension.errors, []);
+  assert.equal(intoDimension.values.lineColor, "#123456");
+  assert.equal(intoDimension.values.unit, " mm"); // shared content keys transfer
+  assert.equal(intoDimension.values.decimals, "2");
+  assert.equal(intoDimension.values.value, undefined);
 });

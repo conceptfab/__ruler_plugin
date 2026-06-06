@@ -808,8 +808,10 @@
   }
 
   function formatNumber(value) {
-    var rounded = Math.round(value * 10) / 10;
-    if (Math.abs(rounded - Math.round(rounded)) < 0.001) {
+    // Keep up to 3 decimal places so the Value field can match the Decimals
+    // control (0-3). Integers still render without a trailing ".0".
+    var rounded = Math.round(value * 1000) / 1000;
+    if (Math.abs(rounded - Math.round(rounded)) < 0.0005) {
       return String(Math.round(rounded));
     }
     return String(rounded);
