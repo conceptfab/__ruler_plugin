@@ -51,6 +51,7 @@ test("controller carries live value, timing, and style controls", () => {
   assert.match(source, /addSlider\(controller, "Decimals", settings\.decimals\)/);
   assert.match(source, /addSlider\(controller, "Jump At", settings\.jumpAt\)/);
   assert.match(source, /addCheckbox\(controller, "Count", settings\.count\)/);
+  assert.match(source, /addCheckbox\(controller, "Animate End Value", settings\.animateEndValue\)/);
   assert.match(source, /addCheckbox\(controller, "Fit To Comp", settings\.fitToComp\)/);
   assert.match(source, /addSlider\(controller, "Start Frame", settings\.startFrame\)/);
   assert.match(source, /addSlider\(controller, "End Frame", settings\.endFrame\)/);
@@ -60,7 +61,7 @@ test("controller carries live value, timing, and style controls", () => {
   assert.match(source, /addSlider\(controller, "Label Offset Y", settings\.labelOffsetY\)/);
 });
 
-test("static label text is written directly without Source Text expressions", () => {
+test("label fallback text is written directly before expressions run", () => {
   const source = readPanel();
 
   assert.match(source, /comp\.layers\.addText\(formatStaticLabel\(settings\.startValue, settings\)\)/);
@@ -85,7 +86,7 @@ test("intermediate value label is always the fixed Start Value", () => {
   assert.doesNotMatch(valueLabelSource, /linear\(time/);
 });
 
-test("end value label is written directly from End Value", () => {
+test("end value label starts from End Value and then gets animated Source Text", () => {
   const source = readPanel();
   const start = source.indexOf("function createEndLabelLayer");
   const end = source.indexOf("function applyTextDocumentStyle");
@@ -95,8 +96,8 @@ test("end value label is written directly from End Value", () => {
   assert.notEqual(end, -1);
   assert.match(endLabelSource, /comp\.layers\.addText\(formatStaticLabel\(settings\.endValue, settings\)\)/);
   assert.match(endLabelSource, /layer\.name = prefix \+ "_EndLabel"/);
+  assert.match(endLabelSource, /source\.expression = endValueTextExpression\(prefix, settings\.unit\)/);
   assert.doesNotMatch(endLabelSource, /effectName: "Start Value"/);
-  assert.doesNotMatch(endLabelSource, /linear\(time/);
 });
 
 test("static label text is written as a fallback before Source Text expressions run", () => {
@@ -115,12 +116,12 @@ test("line, base point, value point, end point, and label positions are expressi
   assert.match(source, /ellipse\.property\("ADBE Vector Ellipse Size"\)\.expression = pointSizeExpression\(prefix\)/);
   assert.match(source, /layer\.property\("Transform"\)\.property\("Position"\)\.expression = basePositionExpression\(prefix\)/);
   assert.match(source, /layer\.property\("Transform"\)\.property\("Position"\)\.expression = valuePositionExpression\(prefix\)/);
-  assert.match(source, /layer\.property\("Transform"\)\.property\("Position"\)\.expression = endPositionExpression\(prefix\)/);
+  assert.match(source, /layer\.property\("Transform"\)\.property\("Position"\)\.expression = liveEndPositionExpression\(prefix\)/);
   assert.match(source, /layer\.property\("Transform"\)\.property\("Position"\)\.expression = valueLabelPositionExpression\(prefix\)/);
-  assert.match(source, /layer\.property\("Transform"\)\.property\("Position"\)\.expression = endLabelPositionExpression\(prefix\)/);
-  assert.match(source, /layer\.property\("Transform"\)\.property\("Opacity"\)\.expression = endRevealOpacityExpression\(prefix\)/);
+  assert.match(source, /layer\.property\("Transform"\)\.property\("Position"\)\.expression = endValueLabelPositionExpression\(prefix\)/);
+  assert.match(source, /layer\.property\("Transform"\)\.property\("Opacity"\)\.expression = endValueLabelOpacityExpression\(prefix\)/);
   assert.match(source, /v \+ \[ctrl\.effect\("Label Offset X"\)\("Slider"\), ctrl\.effect\("Label Offset Y"\)\("Slider"\)\]/);
-  assert.match(source, /e \+ \[ctrl\.effect\("Label Offset X"\)\("Slider"\), ctrl\.effect\("Label Offset Y"\)\("Slider"\)\]/);
+  assert.match(source, /p \+ \[ctrl\.effect\("Label Offset X"\)\("Slider"\), ctrl\.effect\("Label Offset Y"\)\("Slider"\)\]/);
   assert.doesNotMatch(source, /var mid = \(s \+ e\) \/ 2;/);
   assert.doesNotMatch(source, /var ratio =/);
   assert.doesNotMatch(source, /s \+ \(e - s\) \* ratio/);
@@ -171,15 +172,37 @@ test("dimension line starts at Base to Value and reveals toward End with no trim
   assert.doesNotMatch(source, /lineRevealExpression/);
 });
 
-test("endpoint and end value are hidden on the first frame until reveal completes", () => {
+test("endpoint is hidden on the first frame and then moves as the reveal tip", () => {
   const source = readPanel();
 
   assert.match(source, /function endRevealProgressExpression\(prefix\)/);
   assert.match(source, /progress = linear\(time, t0, t1, 0, 1\);/);
   assert.match(source, /progress = time < jump \? 0 : 1;/);
-  assert.match(source, /progress >= 1 \? 100 : 0;/);
-  assert.match(source, /createEndPointLayer[\s\S]*Opacity"\)\.expression = endRevealOpacityExpression\(prefix\)/);
-  assert.match(source, /createEndLabelLayer[\s\S]*Opacity"\)\.expression = endRevealOpacityExpression\(prefix\)/);
+  assert.match(source, /function liveEndPositionExpression\(prefix\)/);
+  assert.match(source, /s \+ \(e - s\) \* progress;/);
+  assert.match(source, /function movingEndOpacityExpression\(prefix\)/);
+  assert.match(source, /progress > 0 \? 100 : 0;/);
+  assert.match(source, /createEndPointLayer[\s\S]*Opacity"\)\.expression = movingEndOpacityExpression\(prefix\)/);
+});
+
+test("end value can animate together with the moving endpoint", () => {
+  const source = readPanel();
+
+  assert.match(source, /Animate end value/);
+  assert.match(source, /effect\("Animate End Value"\)\("Checkbox"\)/);
+  assert.match(source, /var p = animateEndValue > 0\.5 \? s \+ \(e - s\) \* progress : e;/);
+  assert.match(source, /source\.expression = endValueTextExpression\(prefix, settings\.unit\)/);
+  assert.match(source, /function endValueTextExpression\(prefix, unit\)/);
+  assert.match(source, /var sv = ctrl\.effect\("Start Value"\)\("Slider"\);/);
+  assert.match(source, /var ev = ctrl\.effect\("End Value"\)\("Slider"\);/);
+  assert.match(source, /if \(animateEndValue > 0\.5\) \{/);
+  assert.match(source, /v = linear\(time, t0, t1, sv, ev\);/);
+  assert.match(source, /v = time < jump \? sv : ev;/);
+  assert.match(source, /v = ev;/);
+  assert.match(source, /v\.toFixed\(dec\) \+ /);
+  assert.match(source, /animateEndValue > 0\.5 \? \(progress > 0 \? 100 : 0\) : \(progress >= 1 \? 100 : 0\);/);
+  assert.match(source, /createEndLabelLayer[\s\S]*Position"\)\.expression = endValueLabelPositionExpression\(prefix\)/);
+  assert.match(source, /createEndLabelLayer[\s\S]*Opacity"\)\.expression = endValueLabelOpacityExpression\(prefix\)/);
 });
 
 test("generated infrastructure is shy and uses one label colour", () => {
@@ -205,6 +228,7 @@ test("panel exposes the specified controls", () => {
   assert.match(source, /Count up/);
   assert.match(source, /Jump at \(%\)/);
   assert.match(source, /Fit animation to composition/);
+  assert.match(source, /Animate end value/);
   assert.match(source, /Line color/);
   assert.match(source, /Line width/);
   assert.match(source, /Point size/);

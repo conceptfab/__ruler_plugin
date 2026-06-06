@@ -489,6 +489,7 @@
 
     var source = layer.property("Source Text");
     applyTextDocumentStyle(source, settings);
+    source.expression = endValueTextExpression(prefix, settings.unit);
 
     layer.property("Transform").property("Position").expression = endValueLabelPositionExpression(prefix);
     layer.property("Transform").property("Opacity").expression = endValueLabelOpacityExpression(prefix);
@@ -621,6 +622,34 @@
     ].join("\n");
   }
 
+  function endValueTextExpression(prefix, unit) {
+    return [
+      'var ctrl = thisComp.layer("' + prefix + '_Controller");',
+      'var animateEndValue = ctrl.effect("Animate End Value")("Checkbox");',
+      'var sv = ctrl.effect("Start Value")("Slider");',
+      'var ev = ctrl.effect("End Value")("Slider");',
+      'var dec = Math.max(0, Math.min(3, Math.round(ctrl.effect("Decimals")("Slider"))));',
+      'var count = ctrl.effect("Count")("Checkbox");',
+      'var fit = ctrl.effect("Fit To Comp")("Checkbox");',
+      'var t0 = fit > 0.5 ? 0 : ctrl.effect("Start Frame")("Slider") * thisComp.frameDuration;',
+      'var t1 = fit > 0.5 ? thisComp.duration - thisComp.frameDuration * 2 : ctrl.effect("End Frame")("Slider") * thisComp.frameDuration;',
+      'if (t1 < t0) { var tmp = t0; t0 = t1; t1 = tmp; }',
+      'var jumpAt = Math.max(0, Math.min(100, ctrl.effect("Jump At")("Slider")));',
+      'var v;',
+      'if (animateEndValue > 0.5) {',
+      '  if (count > 0.5) {',
+      '    v = linear(time, t0, t1, sv, ev);',
+      '  } else {',
+      '    var jump = t0 + (t1 - t0) * jumpAt / 100;',
+      '    v = time < jump ? sv : ev;',
+      '  }',
+      '} else {',
+      '  v = ev;',
+      '}',
+      'v.toFixed(dec) + ' + expressionStringLiteral(unit) + ';',
+    ].join("\n");
+  }
+
   function movingEndOpacityExpression(prefix) {
     return [
       endRevealProgressExpression(prefix),
@@ -650,6 +679,10 @@
       'var ps = thisComp.layer("' + prefix + '_Controller").effect("Point Size")("Slider");',
       "[ps, ps];",
     ].join("\n");
+  }
+
+  function expressionStringLiteral(value) {
+    return '"' + String(value || "").replace(/\\/g, "\\\\").replace(/"/g, '\\"') + '"';
   }
 
   function applyLabelOrientation(layer, prefix, settings) {
