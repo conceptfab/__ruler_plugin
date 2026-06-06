@@ -4,7 +4,7 @@
   "private": true,
   "description": "Dockable After Effects ScriptUI panel for animated ruler rigs.",
   "scripts": {
-    "install:ae": "node scripts/install-after-effects.js",
+    "install:ae": "python3 scripts/install-after-effects.py",
     "test": "node --test tests/*.test.js"
   },
   "engines": {

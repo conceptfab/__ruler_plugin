@@ -6,8 +6,8 @@ import sys
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
 
-# Keep this list in sync with PANEL_FILES in install-after-effects.js.
-# tests/installAfterEffects.test.js asserts the two installers agree.
+# The panel files this installer copies into the ScriptUI Panels folder.
+# tests/installAfterEffects.test.js asserts this list and the copy behaviour.
 PANEL_FILES = [
     "RulerAnimator.jsx",
     "rulerAnimatorCore.js",
@@ -65,9 +65,9 @@ def install():
         print(f"Error creating destination directory: {e}", file=sys.stderr)
         sys.exit(1)
         
-    # Copy only the known panel files (mirrors the JS installer's allowlist).
-    # Avoid os.listdir + copytree/rmtree: that shipped stray files and could
-    # recursively delete a destination folder on a name collision.
+    # Copy only the known panel files. Avoid os.listdir + copytree/rmtree:
+    # that shipped stray files and could recursively delete a destination
+    # folder on a name collision.
     for file_name in PANEL_FILES:
         src_path = os.path.join(src_dir, file_name)
         dest_path = os.path.join(dest_dir, file_name)

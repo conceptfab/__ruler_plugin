@@ -78,8 +78,8 @@ test("serializePreset writes a typed, versioned snapshot and fills missing field
   assert.equal(parsed.version, 1);
   assert.equal(parsed.values.divisions, "6");
   assert.equal(parsed.values.labels, 'a "quoted" label');
-  assert.equal(parsed.values.lineColor, "#2563eb");
-  assert.equal(parsed.values.showFinalLine, true);
+  assert.equal(parsed.values.lineColor, "#000000");
+  assert.equal(parsed.values.showFinalLine, false);
 });
 
 test("deserializePreset round-trips every field including quoted labels", () => {
@@ -150,7 +150,7 @@ test("deserializePreset accepts a Dimension preset, keeping shared styling and d
   assert.equal(result.values.pointFill, "#445566");
   // ruler-only fields fall back to ruler defaults
   assert.equal(result.values.divisions, "6");
-  assert.equal(result.values.showFinalLine, true);
+  assert.equal(result.values.showFinalLine, false);
   // dimension-only fields are dropped
   assert.equal(result.values.startValue, undefined);
   assert.equal(result.values.unit, undefined);
@@ -166,7 +166,7 @@ test("deserializePreset fills defaults for missing fields and drops unknown keys
 
   assert.deepEqual(result.errors, []);
   assert.equal(result.values.divisions, "3");
-  assert.equal(result.values.labelColor, "#92400e");
+  assert.equal(result.values.labelColor, "#000000");
   assert.equal(result.values.mysteryField, undefined);
 });
 

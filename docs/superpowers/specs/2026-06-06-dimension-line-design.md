@@ -27,8 +27,7 @@ New, no changes to existing plugins:
 - `src/dimensionLineCore.js` — pure, testable core (Node + ExtendScript)
 - `tests/dimensionLineCore.test.js`
 - `tests/dimensionLinePanel.static.test.js`
-- Installer entries in `scripts/install-after-effects.py` and
-  `scripts/install-after-effects.js`
+- Installer entry in `scripts/install-after-effects.py`
 
 ## Rig (prefix `DimLine_NN_`)
 

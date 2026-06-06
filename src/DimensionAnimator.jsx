@@ -135,21 +135,21 @@
     textColumn.spacing = 6;
 
     addSubHeader(lineColumn, "Line & point");
-    var lineColorInput = addColorControl(lineColumn, "Line color", "#2563eb");
-    var lineWidthInput = addStepperEdit(lineColumn, "Line width", "4", 1, 30, 1);
-    var pointSizeInput = addStepperEdit(lineColumn, "Point size", "18", 4, 96, 1);
-    var pointFillInput = addColorControl(lineColumn, "Point fill", "#2563eb");
+    var lineColorInput = addColorControl(lineColumn, "Line color", "#000000");
+    var lineWidthInput = addStepperEdit(lineColumn, "Line width", "3", 1, 30, 1);
+    var pointSizeInput = addStepperEdit(lineColumn, "Point size", "16", 4, 96, 1);
+    var pointFillInput = addColorControl(lineColumn, "Point fill", "#000000");
     var pointStrokeInput = addColorControl(lineColumn, "Point stroke", "#ffffff");
-    var pointStrokeWidthInput = addStepperEdit(lineColumn, "Stroke width", "4", 0, 20, 1);
+    var pointStrokeWidthInput = addStepperEdit(lineColumn, "Stroke width", "6", 0, 20, 1);
 
     addSubHeader(textColumn, "Text");
     var labelFontInput = addFontControl(textColumn, "Font");
     var labelAlignInput = addAlignmentControl(textColumn, "Text align");
     var labelOrientationInput = addTextOrientationControl(textColumn, "Text direction");
-    var labelColorInput = addColorControl(textColumn, "Text color", "#111827");
-    var labelFontSizeInput = addStepperEdit(textColumn, "Text size", "36", 8, 160, 1);
+    var labelColorInput = addColorControl(textColumn, "Text color", "#000000");
+    var labelFontSizeInput = addStepperEdit(textColumn, "Text size", "24", 8, 160, 1);
     var labelOffsetXInput = addStepperEdit(textColumn, "Text X offset", "0", -300, 300, 2);
-    var labelOffsetYInput = addStepperEdit(textColumn, "Text Y offset", "-52", -300, 300, 2);
+    var labelOffsetYInput = addStepperEdit(textColumn, "Text Y offset", "-16", -300, 300, 2);
 
     var actions = panel.add("group");
     actions.orientation = "row";
@@ -958,7 +958,7 @@
     center.justificationName = "center";
     var right = dropdown.add("item", "Right");
     right.justificationName = "right";
-    dropdown.selection = center;
+    dropdown.selection = right;
     return dropdown;
   }
 
@@ -972,7 +972,7 @@
     vertical.orientationName = "vertical";
     var alongLine = dropdown.add("item", "Along line");
     alongLine.orientationName = "alongLine";
-    dropdown.selection = horizontal;
+    dropdown.selection = alongLine;
     return dropdown;
   }
 

@@ -16,7 +16,7 @@ Cross‑platformowy ExtendScript/ScriptUI (`.jsx`) instalowany do `Scripts/Scrip
 - `src/dimensionAnimatorCore.js` — czyste funkcje (presety, formatowanie liczby, budowa wyrażeń), testowalne w Node.
 - `tests/dimensionAnimatorCore.test.js`
 - `tests/dimensionAnimatorPanel.static.test.js`
-- `scripts/install-after-effects.js` — rozszerzony tak, by kopiował również dwa nowe pliki obok plików Rulera.
+- `scripts/install-after-effects.py` — rozszerzony tak, by kopiował również dwa nowe pliki obok plików Rulera.
 
 Tytuł panelu: `Dimension Animator`. Prefiks rigów: `Dim_NN_` (auto‑inkrementacja jak `Ruler_NN_`).
 
